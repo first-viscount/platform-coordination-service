@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  platform-coordination:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - LOG_FORMAT=text
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+    command: python -m uvicorn platform_coordination.main:app --host 0.0.0.0 --port 8000 --reload
