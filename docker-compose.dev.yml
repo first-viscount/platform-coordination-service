@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:17.5
+    container_name: platform-coordination-db
+    environment:
+      POSTGRES_DB: platform_coordination
+      POSTGRES_USER: coordination_user
+      POSTGRES_PASSWORD: coordination_dev_password
+      # Enable detailed logging for development
+      POSTGRES_LOG_STATEMENT: all
+      POSTGRES_LOG_CONNECTIONS: 'on'
+      POSTGRES_LOG_DISCONNECTIONS: 'on'
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Mount init scripts if needed
+      - ./sql/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coordination_user -d platform_coordination"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - platform-network
+
+  # Optional: pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: platform-coordination-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@firstviscount.local
+      PGADMIN_DEFAULT_PASSWORD: pgadmin_dev_password
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - platform-network
+    profiles:
+      - tools
+
+networks:
+  platform-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

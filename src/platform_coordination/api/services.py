@@ -1,6 +1,7 @@
 """Service registry API endpoints."""
 
 from datetime import UTC, datetime
+from typing import Annotated
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Query
@@ -72,9 +73,15 @@ async def register_service(registration: ServiceRegistration) -> ServiceInfo:
 
 @router.get("/", response_model=list[ServiceInfo])
 async def list_services(
-    type: ServiceType | None = Query(None, description="Filter by service type"),
-    status: ServiceStatus | None = Query(None, description="Filter by service status"),
-    tag: str | None = Query(None, description="Filter by tag (format: key=value)"),
+    type: Annotated[
+        ServiceType | None, Query(description="Filter by service type")
+    ] = None,
+    status: Annotated[
+        ServiceStatus | None, Query(description="Filter by service status")
+    ] = None,
+    tag: Annotated[
+        str | None, Query(description="Filter by tag (format: key=value)")
+    ] = None,
 ) -> list[ServiceInfo]:
     """List all registered services with optional filters."""
     services = list(service_registry.values())
@@ -131,9 +138,9 @@ async def unregister_service(service_id: str) -> None:
 @router.get("/discover/{service_name}", response_model=list[ServiceInfo])
 async def discover_services(
     service_name: str,
-    status: ServiceStatus = Query(
-        ServiceStatus.HEALTHY, description="Minimum acceptable status"
-    ),
+    status: Annotated[
+        ServiceStatus, Query(description="Minimum acceptable status")
+    ] = ServiceStatus.HEALTHY,
 ) -> list[ServiceInfo]:
     """Discover services by name, returning only healthy instances."""
     services = [

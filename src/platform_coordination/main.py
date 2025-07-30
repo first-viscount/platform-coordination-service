@@ -1,5 +1,6 @@
 """Main entry point for the Platform Coordination Service."""
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,13 +9,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from platform_coordination.api import health, services
 from platform_coordination.core.config import settings
 from platform_coordination.core.logging import setup_logging
+from src.api.middleware.error_handling import (
+    ErrorHandlingMiddleware,
+    create_exception_handlers,
+)
+from src.api.middleware.logging import LoggingMiddleware
+from src.api.routes import example
+from src.core.error_utils import create_error_response_examples
 
 # Set up structured logging
 logger = setup_logging()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application lifecycle."""
     logger.info("Starting Platform Coordination Service", version=settings.app_version)
 
@@ -33,7 +41,14 @@ def create_app() -> FastAPI:
         version=settings.app_version,
         description="Service registry and discovery for the First Viscount platform",
         lifespan=lifespan,
+        responses=create_error_response_examples(),  # type: ignore[arg-type]
     )
+
+    # Add error handling middleware FIRST (to catch all errors)
+    app.add_middleware(ErrorHandlingMiddleware)
+
+    # Add logging middleware
+    app.add_middleware(LoggingMiddleware)
 
     # Configure CORS
     app.add_middleware(
@@ -44,9 +59,13 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Add custom exception handlers
+    create_exception_handlers(app)
+
     # Include routers
     app.include_router(health.router, prefix="/health", tags=["health"])
     app.include_router(services.router, prefix="/api/v1/services", tags=["services"])
+    app.include_router(example.router, tags=["examples"])
 
     return app
 

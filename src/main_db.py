@@ -1,5 +1,7 @@
-"""Main FastAPI application."""
+"""Main FastAPI application with database support."""
 
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI
@@ -12,6 +14,42 @@ from src.api.middleware.error_handling import (
 )
 from src.api.routes import example, health
 from src.core.config import settings
+from src.core.database import close_db, init_db
+from src.core.logging import get_logger, setup_logging
+from src.core.middleware import LoggingMiddleware
+from src.platform_coordination.api import services_db
+
+# Setup logging
+setup_logging(
+    level=settings.log_level,
+    service_name=settings.app_name,
+    environment=settings.environment,
+)
+
+logger = get_logger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Application lifespan management."""
+    # Startup
+    logger.info("Starting Platform Coordination Service", version=settings.app_version)
+
+    # Initialize database
+    if settings.database_url:
+        try:
+            await init_db()
+            logger.info("Database initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize database", error=str(e))
+            # In production, you might want to fail fast here
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down Platform Coordination Service")
+    if settings.database_url:
+        await close_db()
 
 
 # Custom OpenAPI schema
@@ -29,10 +67,18 @@ def custom_openapi() -> dict[str, Any]:
 The Platform Coordination Service provides a centralized API for managing and coordinating various platform services.
 
 ### Key Features:
+- **Service Registry**: Register and discover platform services
 - **Health Monitoring**: Real-time health checks for service availability
 - **Service Coordination**: Manage interactions between platform services
 - **Error Handling**: Comprehensive error responses with detailed context
 - **API Versioning**: Stable API with version support
+
+### Service Registry
+The service registry allows microservices to:
+- Register themselves with the platform
+- Discover other services by name or type
+- Update their health status
+- Query for healthy service instances
 
 ### API Versioning
 This API follows semantic versioning. The current version is v1.
@@ -109,12 +155,14 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    lifespan=lifespan,
 )
 
 app.openapi = custom_openapi  # type: ignore[method-assign]
 
-# Add error handling middleware (must be first)
+# Add middleware (order matters - error handling should be outermost)
 app.add_middleware(ErrorHandlingMiddleware)
+app.add_middleware(LoggingMiddleware)
 
 # Create custom exception handlers
 create_exception_handlers(app)
@@ -131,6 +179,11 @@ app.add_middleware(
 # Include routers
 app.include_router(health.router, tags=["health"])
 app.include_router(example.router, prefix="/api/v1", tags=["examples"])
+app.include_router(
+    services_db.router,
+    prefix="/api/v1/services",
+    tags=["service-registry"],
+)
 
 
 @app.get(
@@ -142,6 +195,7 @@ Get basic information about the Platform Coordination Service.
 This is the root endpoint that provides:
 - Service name
 - Current version
+- Database status (if connected)
 
 Useful for quick service identification and version checking.
     """,
@@ -154,6 +208,7 @@ Useful for quick service identification and version checking.
                     "example": {
                         "service": "platform-coordination-service",
                         "version": "0.1.0",
+                        "database": "connected",
                     }
                 }
             },
@@ -163,4 +218,15 @@ Useful for quick service identification and version checking.
 )
 async def root() -> dict[str, str]:
     """Root endpoint."""
-    return {"service": settings.app_name, "version": settings.app_version}
+    info = {
+        "service": settings.app_name,
+        "version": settings.app_version,
+    }
+
+    # Add database status if configured
+    if settings.database_url:
+        info["database"] = "connected"
+    else:
+        info["database"] = "not configured"
+
+    return info

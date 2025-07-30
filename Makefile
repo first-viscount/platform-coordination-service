@@ -46,10 +46,6 @@ test: ## Run tests
 	PYTHONPATH=src pytest -v tests/
 	@echo "$(GREEN)✓ All tests passed$(NC)"
 
-verify: ## Verify service works without running it
-	@echo "$(YELLOW)Verifying service...$(NC)"
-	@python scripts/verify-service.py
-
 test-cov: ## Run tests with coverage
 	@echo "$(YELLOW)Running tests with coverage...$(NC)"
 	PYTHONPATH=src pytest --cov=platform_coordination --cov-report=term-missing tests/

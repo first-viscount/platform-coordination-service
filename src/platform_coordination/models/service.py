@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_serializer, field_validator
 
 
 class ServiceStatus(str, Enum):
@@ -83,6 +83,11 @@ class ServiceInfo(BaseModel):
         """Get the health check URL."""
         return f"{self.url}{self.health_check_endpoint}"
 
+    @field_serializer("registered_at", "last_seen_at")
+    def serialize_datetime(self, dt: datetime, _info: Any) -> str:
+        """Serialize datetime to ISO format string."""
+        return dt.isoformat()
+
 
 class ServiceHealth(BaseModel):
     """Service health check response."""
@@ -93,3 +98,8 @@ class ServiceHealth(BaseModel):
     response_time_ms: float | None = None
     error: str | None = None
     details: dict[str, Any] = Field(default_factory=dict)
+
+    @field_serializer("checked_at")
+    def serialize_checked_at(self, dt: datetime, _info: Any) -> str:
+        """Serialize datetime to ISO format string."""
+        return dt.isoformat()

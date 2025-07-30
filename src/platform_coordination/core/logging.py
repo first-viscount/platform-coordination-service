@@ -2,6 +2,7 @@
 
 import logging
 import sys
+from typing import Any
 
 import structlog
 from structlog.stdlib import BoundLogger
@@ -32,6 +33,7 @@ def setup_logging() -> BoundLogger:
         structlog.contextvars.merge_contextvars,
     ]
 
+    renderer: Any
     if settings.log_format == "json":
         # JSON output for production
         renderer = structlog.processors.JSONRenderer()
@@ -40,15 +42,15 @@ def setup_logging() -> BoundLogger:
         renderer = structlog.dev.ConsoleRenderer()
 
     structlog.configure(
-        processors=shared_processors + [renderer],
+        processors=shared_processors + [renderer],  # type: ignore[arg-type]
         wrapper_class=structlog.stdlib.BoundLogger,
         logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,
     )
 
-    return structlog.get_logger()
+    return structlog.get_logger()  # type: ignore[no-any-return]
 
 
 def get_logger(name: str | None = None) -> BoundLogger:
     """Get a logger instance."""
-    return structlog.get_logger(name)
+    return structlog.get_logger(name)  # type: ignore[no-any-return]

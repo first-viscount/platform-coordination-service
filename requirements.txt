@@ -17,8 +17,10 @@ black==24.10.0
 ruff==0.9.0
 mypy==1.8.0
 
+# Database
+sqlalchemy==2.0.38
+asyncpg==0.31.0
+alembic==1.15.0
+
 # Future dependencies (uncomment when needed)
-# sqlalchemy==2.0.25
-# alembic==1.13.1
-# redis==5.0.1
-# httpx==0.26.0  # For making HTTP requests to health endpoints
+# redis==5.2.1

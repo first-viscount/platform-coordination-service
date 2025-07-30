@@ -1,21 +1,20 @@
 """Middleware for the Platform Coordination Service."""
 
 import time
-from typing import Callable
 import uuid
+from collections.abc import Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.core.logging import (
-    get_logger,
-    set_request_id,
-    set_correlation_id,
     clear_context,
-    get_request_id,
     get_correlation_id,
+    get_logger,
+    get_request_id,
+    set_correlation_id,
+    set_request_id,
 )
-
 
 logger = get_logger(__name__)
 
@@ -70,7 +69,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             response.headers["X-Request-ID"] = request_id
             response.headers["X-Correlation-ID"] = correlation_id
 
-            return response
+            return response  # type: ignore[no-any-return]
 
         except Exception as e:
             # Calculate duration
@@ -108,6 +107,6 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             response.headers["X-Request-ID"] = get_request_id() or ""
             response.headers["X-Correlation-ID"] = get_correlation_id() or ""
-            return response
+            return response  # type: ignore[no-any-return]
         finally:
             clear_context()
