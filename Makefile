@@ -63,7 +63,7 @@ verify-full: ## Run comprehensive verification tests
 
 run: ## Run the service locally
 	@echo "$(GREEN)Starting service on port $(PORT)...$(NC)"
-	cd src && $(PYTHON) -m uvicorn platform_coordination.main:app --reload --host 0.0.0.0 --port $(PORT)
+	$(PYTHON) -m uvicorn src.main_db:app --reload --host 0.0.0.0 --port $(PORT)
 
 run-docker: ## Run the service in Docker
 	@echo "$(GREEN)Starting service in Docker...$(NC)"

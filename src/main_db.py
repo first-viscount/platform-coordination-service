@@ -17,7 +17,7 @@ from src.core.config import settings
 from src.core.database import close_db, init_db
 from src.core.logging import get_logger, setup_logging
 from src.core.middleware import LoggingMiddleware
-from src.platform_coordination.api import services_db
+from src.api.routes import services
 
 # Setup logging
 setup_logging(
@@ -180,7 +180,7 @@ app.add_middleware(
 app.include_router(health.router, tags=["health"])
 app.include_router(example.router, prefix="/api/v1", tags=["examples"])
 app.include_router(
-    services_db.router,
+    services.router,
     prefix="/api/v1/services",
     tags=["service-registry"],
 )

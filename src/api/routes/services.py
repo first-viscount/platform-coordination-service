@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from src.platform_coordination.models.service import (
+from src.api.models.service import (
     ServiceInfo,
     ServiceMetadata,
     ServiceRegistration,
