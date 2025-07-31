@@ -7,8 +7,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from platform_coordination.models.service import (
+from src.platform_coordination.models.service import (
     ServiceInfo,
+    ServiceMetadata,
     ServiceRegistration,
     ServiceStatus,
     ServiceType,
@@ -26,6 +27,16 @@ logger = get_logger(__name__)
 
 def _convert_to_service_info(service: ServiceModel) -> ServiceInfo:
     """Convert database model to API model."""
+    # Extract metadata or provide defaults
+    metadata_dict = service.service_metadata or {}
+    metadata = ServiceMetadata(
+        version=metadata_dict.get("version", "unknown"),
+        environment=metadata_dict.get("environment", "development"),
+        region=metadata_dict.get("region"),
+        tags=metadata_dict.get("tags", {}),
+        capabilities=metadata_dict.get("capabilities", [])
+    )
+    
     return ServiceInfo(
         id=str(service.id),
         name=service.name,
@@ -33,7 +44,7 @@ def _convert_to_service_info(service: ServiceModel) -> ServiceInfo:
         host=service.host,
         port=service.port,
         status=ServiceStatus(service.status.value),
-        metadata=service.metadata or {},
+        metadata=metadata,
         health_check_endpoint=service.health_check_endpoint,
         registered_at=service.registered_at,
         last_seen_at=service.last_seen_at,
@@ -65,7 +76,7 @@ async def register_service(
         updated = await repo.update(
             existing.id,
             type=DBServiceType(registration.type.value),
-            metadata=(
+            service_metadata=(
                 registration.metadata.model_dump() if registration.metadata else {}
             ),
             health_check_endpoint=registration.health_check_endpoint,
@@ -85,15 +96,39 @@ async def register_service(
             host=registration.host,
             port=registration.port,
             status=DBServiceStatus.UNKNOWN,
-            metadata=(
+            service_metadata=(
                 registration.metadata.model_dump() if registration.metadata else {}
             ),
             health_check_endpoint=registration.health_check_endpoint,
         )
 
         return _convert_to_service_info(service)
-    except ConflictError as e:
-        raise HTTPException(409, str(e)) from e
+    except ConflictError:
+        # This is a race condition - another request created it first
+        # Try to get and update it instead
+        existing = await repo.get_by_name_host_port(
+            registration.name, registration.host, registration.port
+        )
+        if existing:
+            logger.info(
+                "Race condition detected, updating instead",
+                service_id=str(existing.id),
+                service_name=registration.name,
+            )
+            updated = await repo.update(
+                existing.id,
+                type=DBServiceType(registration.type.value),
+                service_metadata=(
+                    registration.metadata.model_dump() if registration.metadata else {}
+                ),
+                health_check_endpoint=registration.health_check_endpoint,
+                status=DBServiceStatus.UNKNOWN,
+            )
+            if updated:
+                return _convert_to_service_info(updated)
+        
+        # If we still can't handle it, raise the error
+        raise HTTPException(409, "Service registration conflict") from None
 
 
 @router.get("/", response_model=list[ServiceInfo])

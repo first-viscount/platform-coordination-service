@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, delete, select
+from sqlalchemy import and_, delete, select, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
@@ -25,22 +25,26 @@ class ServiceRepository(BaseRepository[Service]):
         try:
             service = Service(**kwargs)
             self.session.add(service)
-            await self.session.flush()
-
-            # Log creation event
-            event = ServiceEvent(
-                service_id=service.id,
-                event_type="service_registered",
-                event_data={
-                    "service_name": service.name,
-                    "host": service.host,
-                    "port": service.port,
-                },
-            )
-            self.session.add(event)
-
+            
             await self.session.commit()
             await self.session.refresh(service)
+            
+            # Create event in a separate transaction to avoid flush issues
+            try:
+                event = ServiceEvent(
+                    service_id=service.id,
+                    event_type="service_registered",
+                    event_data={
+                        "service_name": service.name,
+                        "host": service.host,
+                        "port": service.port,
+                    },
+                )
+                self.session.add(event)
+                await self.session.commit()
+            except Exception as e:
+                # Log error but don't fail the service creation
+                logger.error("Failed to create service event", error=str(e))
 
             logger.info(
                 "Service registered",
@@ -57,9 +61,11 @@ class ServiceRepository(BaseRepository[Service]):
                 "Service already exists with this name, host, and port"
             ) from e
 
-    async def get(self, id: UUID) -> Service | None:
+    async def get(self, id: UUID, for_update: bool = False) -> Service | None:
         """Get service by ID."""
         stmt = select(Service).where(Service.id == id)
+        if for_update:
+            stmt = stmt.with_for_update()
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -163,8 +169,13 @@ class ServiceRepository(BaseRepository[Service]):
         if status:
             stmt = stmt.where(Service.status == status)
         if tag_key and tag_value:
-            # PostgreSQL JSONB query
-            stmt = stmt.where(Service.metadata["tags"][tag_key].astext == tag_value)
+            # PostgreSQL JSON query - extract and compare text
+            from sqlalchemy import text
+            stmt = stmt.where(
+                text("service_metadata->'tags'->>:tag_key = :tag_value").bindparams(
+                    tag_key=tag_key, tag_value=tag_value
+                )
+            )
 
         # Include events if requested
         if include_events:
@@ -177,13 +188,16 @@ class ServiceRepository(BaseRepository[Service]):
         return list(result.scalars().all())
 
     async def find_by_name(
-        self, name: str, status: ServiceStatus | None = None
+        self, name: str, status: ServiceStatus | None = None, exclude_unhealthy: bool = True
     ) -> builtins.list[Service]:
         """Find services by name with optional status filter."""
-        stmt = select(Service).where(Service.name == name.lower())
+        stmt = select(Service).where(Service.name == name)
 
         if status:
             stmt = stmt.where(Service.status == status)
+        elif exclude_unhealthy:
+            # By default, exclude unhealthy services
+            stmt = stmt.where(Service.status != ServiceStatus.UNHEALTHY)
 
         stmt = stmt.order_by(Service.last_seen_at.desc())
 
@@ -194,9 +208,12 @@ class ServiceRepository(BaseRepository[Service]):
         self, id: UUID, healthy: bool, check_time: datetime | None = None
     ) -> Service | None:
         """Update service health check status."""
-        service = await self.get(id)
+        service = await self.get(id, for_update=True)
         if not service:
             return None
+
+        # Track old status for event logging
+        old_status = service.status
 
         if healthy:
             service.status = ServiceStatus.HEALTHY
@@ -210,6 +227,19 @@ class ServiceRepository(BaseRepository[Service]):
 
         service.last_health_check_at = check_time or datetime.now(UTC)
         service.last_seen_at = datetime.now(UTC)
+        service.version = service.version + 1
+
+        # Log status change event if status changed
+        if old_status != service.status:
+            event = ServiceEvent(
+                service_id=service.id,
+                event_type="status_change",
+                event_data={
+                    "old_status": old_status.value,
+                    "new_status": service.status.value,
+                },
+            )
+            self.session.add(event)
 
         await self.session.commit()
         await self.session.refresh(service)

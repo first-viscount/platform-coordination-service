@@ -6,9 +6,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from platform_coordination.api import health, services
-from platform_coordination.core.config import settings
-from platform_coordination.core.logging import setup_logging
+from src.platform_coordination.api import health, services
+from src.platform_coordination.core.config import settings
+from src.platform_coordination.core.logging import setup_logging
 from src.api.middleware.error_handling import (
     ErrorHandlingMiddleware,
     create_exception_handlers,

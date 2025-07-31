@@ -7,7 +7,7 @@ from typing import Any
 import structlog
 from structlog.stdlib import BoundLogger
 
-from platform_coordination.core.config import settings
+from src.platform_coordination.core.config import settings
 
 
 def setup_logging() -> BoundLogger:

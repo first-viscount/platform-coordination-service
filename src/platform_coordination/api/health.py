@@ -5,7 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter
 
-from platform_coordination.core.config import settings
+from src.platform_coordination.core.config import settings
 
 router = APIRouter()
 

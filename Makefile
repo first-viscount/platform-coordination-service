@@ -81,5 +81,8 @@ clean: ## Clean up generated files
 fmt: format ## Alias for format
 check: lint type-check test ## Run all checks (lint, type-check, test)
 
+# Include integration test targets
+-include Makefile.integration
+
 # Default target
 .DEFAULT_GOAL := help

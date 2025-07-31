@@ -1,0 +1,51 @@
+# Integration test targets for platform coordination service
+
+.PHONY: test-integration test-integration-verbose test-integration-benchmark test-db-setup test-db-teardown
+
+# Variables
+# Detect docker compose command
+DOCKER_COMPOSE_CMD := $(shell command -v docker-compose >/dev/null 2>&1 && echo "docker-compose" || echo "docker compose")
+DOCKER_COMPOSE := $(DOCKER_COMPOSE_CMD) -f docker-compose.dev.yml
+TEST_DB_URL := postgresql+asyncpg://coordination_user:coordination_dev_password@localhost:5432/platform_coordination_test
+
+# Colors
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+RED := \033[0;31m
+NC := \033[0m
+
+test-db-setup: ## Set up test database
+	@echo "$(YELLOW)Setting up test database...$(NC)"
+	@$(DOCKER_COMPOSE) up -d postgres
+	@sleep 3
+	@$(DOCKER_COMPOSE) exec -T postgres psql -U coordination_user -d platform_coordination -c "CREATE DATABASE platform_coordination_test;" 2>/dev/null || true
+	@echo "$(GREEN)✓ Test database ready$(NC)"
+
+test-db-teardown: ## Tear down test database
+	@echo "$(YELLOW)Cleaning up test database...$(NC)"
+	@$(DOCKER_COMPOSE) exec -T postgres psql -U coordination_user -d platform_coordination -c "DROP DATABASE IF EXISTS platform_coordination_test;" 2>/dev/null || true
+	@echo "$(GREEN)✓ Test database cleaned up$(NC)"
+
+test-integration: test-db-setup ## Run integration tests
+	@echo "$(YELLOW)Running integration tests...$(NC)"
+	@TEST_DATABASE_URL=$(TEST_DB_URL) PYTHONPATH=src pytest tests/integration/ -v --tb=short || (echo "$(RED)✗ Integration tests failed$(NC)" && exit 1)
+	@echo "$(GREEN)✓ All integration tests passed$(NC)"
+
+test-integration-verbose: test-db-setup ## Run integration tests with verbose output
+	@echo "$(YELLOW)Running integration tests (verbose)...$(NC)"
+	@TEST_DATABASE_URL=$(TEST_DB_URL) PYTHONPATH=src pytest tests/integration/ -vv -s
+
+test-integration-benchmark: test-db-setup ## Run integration tests with performance benchmarks
+	@echo "$(YELLOW)Running integration tests with benchmarks...$(NC)"
+	@TEST_DATABASE_URL=$(TEST_DB_URL) PYTHONPATH=src pytest tests/integration/ -v --tb=short
+	@echo "$(YELLOW)Running performance benchmarks...$(NC)"
+	@TEST_DATABASE_URL=$(TEST_DB_URL) PYTHONPATH=src pytest tests/integration/test_performance.py -v -s
+
+test-integration-coverage: test-db-setup ## Run integration tests with coverage
+	@echo "$(YELLOW)Running integration tests with coverage...$(NC)"
+	@TEST_DATABASE_URL=$(TEST_DB_URL) PYTHONPATH=src pytest tests/integration/ --cov=src --cov-report=term-missing --cov-report=html
+	@echo "$(GREEN)✓ Coverage report generated in htmlcov/$(NC)"
+
+help-integration: ## Show integration test help
+	@echo "$(GREEN)Integration Test Commands:$(NC)"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile.integration | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-25s$(NC) %s\n", $$1, $$2}'

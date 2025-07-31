@@ -81,7 +81,7 @@ class Service(Base):
     )
 
     # Metadata stored as JSON
-    metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    service_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
 
     # Timestamps
     registered_at: Mapped[datetime] = mapped_column(

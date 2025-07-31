@@ -7,7 +7,7 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException, Query
 from structlog import get_logger
 
-from platform_coordination.models.service import (
+from src.platform_coordination.models.service import (
     ServiceInfo,
     ServiceRegistration,
     ServiceStatus,
