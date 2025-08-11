@@ -33,4 +33,4 @@ pip install -r requirements.txt
 # Run the application with database support
 echo "Starting application with database support..."
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-uvicorn src.main_db:app --reload --host 0.0.0.0 --port 8000
+uvicorn src.main_db:app --reload --host 0.0.0.0 --port 8081

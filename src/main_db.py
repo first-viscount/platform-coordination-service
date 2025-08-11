@@ -127,9 +127,9 @@ No rate limiting is currently implemented. This will be added in future versions
         """,
         routes=app.routes,
         servers=[
-            {"url": "http://localhost:8000", "description": "Local development server"},
+            {"url": "http://localhost:8081", "description": "Local development server"},
             {
-                "url": "http://platform-coordination-service:8000",
+                "url": "http://platform-coordination-service:8081",
                 "description": "Docker service",
             },
         ],

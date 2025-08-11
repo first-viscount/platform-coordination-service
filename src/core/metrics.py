@@ -222,8 +222,10 @@ async def db_metrics_context(
         # Update connection pool metrics if available
         if hasattr(session.get_bind(), "pool"):
             pool = session.get_bind().pool
-            metrics_collector.update_db_pool_metrics(
-                pool_size=pool.size(),
-                checked_out=pool.checkedout(),
-                overflow=pool.overflow(),
-            )
+            # NullPool (used in tests) doesn't have these attributes
+            if hasattr(pool, "size"):
+                metrics_collector.update_db_pool_metrics(
+                    pool_size=pool.size() if callable(pool.size) else 0,
+                    checked_out=pool.checkedout() if hasattr(pool, "checkedout") else 0,
+                    overflow=pool.overflow() if hasattr(pool, "overflow") else 0,
+                )

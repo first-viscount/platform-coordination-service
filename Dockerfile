@@ -51,7 +51,7 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app \
-    PORT=8000
+    PORT=8081
 
 # Create directory for logs (if needed)
 RUN mkdir -p /app/logs && chown -R appuser:appuser /app
@@ -60,11 +60,11 @@ RUN mkdir -p /app/logs && chown -R appuser:appuser /app
 USER appuser
 
 # Expose the port the app runs on
-EXPOSE 8000
+EXPOSE 8081
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8081/health || exit 1
 
 # Run the application
-CMD ["uvicorn", "src.main_db:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+CMD ["uvicorn", "src.main_db:app", "--host", "0.0.0.0", "--port", "8081", "--no-access-log"]

@@ -4,7 +4,7 @@ services:
   platform-coordination:
     build: .
     ports:
-      - "8000:8000"
+      - "8081:8081"
     environment:
       - DEBUG=true
       - LOG_LEVEL=DEBUG
@@ -12,4 +12,4 @@ services:
     volumes:
       - ./src:/app/src
       - ./tests:/app/tests
-    command: python -m uvicorn platform_coordination.main:app --host 0.0.0.0 --port 8000 --reload
+    command: python -m uvicorn platform_coordination.main:app --host 0.0.0.0 --port 8081 --reload

@@ -6,8 +6,8 @@ The Platform Coordination Service provides a RESTful API for managing and coordi
 
 ## Base URL
 
-- Development: `http://localhost:8000`
-- Docker: `http://platform-coordination-service:8000`
+- Development: `http://localhost:8081`
+- Docker: `http://platform-coordination-service:8081`
 
 ## API Documentation
 
@@ -101,7 +101,7 @@ Check service health status.
 
 **Usage:**
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8081/health
 ```
 
 ### Example Items API
@@ -119,7 +119,7 @@ List all items with pagination support.
 
 **Example Request:**
 ```bash
-curl "http://localhost:8000/api/v1/examples/items?limit=20&offset=0"
+curl "http://localhost:8081/api/v1/examples/items?limit=20&offset=0"
 ```
 
 **Response Example:**
@@ -148,7 +148,7 @@ Retrieve a specific item by its ID.
 
 **Example Request:**
 ```bash
-curl http://localhost:8000/api/v1/examples/items/item-001
+curl http://localhost:8081/api/v1/examples/items/item-001
 ```
 
 **Success Response (200):**
@@ -195,7 +195,7 @@ Create a new item.
 
 **Example Request:**
 ```bash
-curl -X POST http://localhost:8000/api/v1/examples/items \
+curl -X POST http://localhost:8081/api/v1/examples/items \
   -H "Content-Type: application/json" \
   -d '{
     "id": "item-003",
@@ -255,7 +255,7 @@ Delete an item by ID.
 
 **Example Request:**
 ```bash
-curl -X DELETE http://localhost:8000/api/v1/examples/items/item-001
+curl -X DELETE http://localhost:8081/api/v1/examples/items/item-001
 ```
 
 **Success Response (200):**
@@ -280,7 +280,7 @@ Trigger example errors for testing and understanding error formats.
 
 **Example Request:**
 ```bash
-curl http://localhost:8000/api/v1/examples/error-examples/validation
+curl http://localhost:8081/api/v1/examples/error-examples/validation
 ```
 
 ## Best Practices
@@ -291,7 +291,7 @@ Check the HTTP status code and handle errors appropriately:
 ```python
 import requests
 
-response = requests.get("http://localhost:8000/api/v1/examples/items/item-001")
+response = requests.get("http://localhost:8081/api/v1/examples/items/item-001")
 if response.status_code == 200:
     item = response.json()
     print(f"Found item: {item['name']}")
@@ -354,7 +354,7 @@ def create_item(item_data):
     
     # Send to API
     response = requests.post(
-        "http://localhost:8000/api/v1/examples/items",
+        "http://localhost:8081/api/v1/examples/items",
         json=item_data
     )
     return response.json()
@@ -374,7 +374,7 @@ Configure your monitoring system to check the `/health` endpoint:
 livenessProbe:
   httpGet:
     path: /health
-    port: 8000
+    port: 8081
   initialDelaySeconds: 30
   periodSeconds: 10
 ```

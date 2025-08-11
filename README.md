@@ -38,8 +38,8 @@ A FastAPI-based service for the First Viscount platform.
    ```
 
 6. **Access the API**
-   - API Documentation: http://localhost:8000/docs
-   - Health Check: http://localhost:8000/health
+   - API Documentation: http://localhost:8081/docs
+   - Health Check: http://localhost:8081/health
 
 ## Development
 

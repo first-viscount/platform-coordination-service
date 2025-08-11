@@ -3,7 +3,7 @@
 # Variables
 PYTHON := python
 PIP := $(PYTHON) -m pip
-PORT := 8000
+PORT := 8081
 
 # Colors for output
 GREEN := \033[0;32m
