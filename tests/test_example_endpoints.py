@@ -3,7 +3,7 @@
 from fastapi.testclient import TestClient
 
 from src.api.routes.example import items_db
-from src.main import app
+from src.main_db import app
 
 client = TestClient(app)
 

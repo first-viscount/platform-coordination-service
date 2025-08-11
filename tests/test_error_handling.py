@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from src.main import app
+from src.main_db import app
 
 client = TestClient(app)
 
