@@ -4,19 +4,23 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 
 from src.api.middleware.error_handling import (
     ErrorHandlingMiddleware,
     create_exception_handlers,
 )
+from src.api.middleware.metrics import setup_http_metrics_middleware
 from src.api.routes import example, health
 from src.core.config import settings
 from src.core.database import close_db, init_db
 from src.core.logging import get_logger, setup_logging
 from src.core.middleware import LoggingMiddleware
+from src.core.metrics import service_registry, get_metrics_collector
+from src.core.background_metrics import start_background_metrics, stop_background_metrics
 from src.api.routes import services
 
 # Setup logging
@@ -44,10 +48,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.error("Failed to initialize database", error=str(e))
             # In production, you might want to fail fast here
 
+    # Start background metrics collection
+    try:
+        await start_background_metrics()
+        logger.info("Background metrics collection started")
+    except Exception as e:
+        logger.error("Failed to start background metrics", error=str(e))
+
     yield
 
     # Shutdown
     logger.info("Shutting down Platform Coordination Service")
+    
+    # Stop background metrics collection
+    try:
+        await stop_background_metrics()
+        logger.info("Background metrics collection stopped")
+    except Exception as e:
+        logger.error("Failed to stop background metrics", error=str(e))
+        
     if settings.database_url:
         await close_db()
 
@@ -163,6 +182,7 @@ app.openapi = custom_openapi  # type: ignore[method-assign]
 # Add middleware (order matters - error handling should be outermost)
 app.add_middleware(ErrorHandlingMiddleware)
 app.add_middleware(LoggingMiddleware)
+app.add_middleware(setup_http_metrics_middleware())
 
 # Create custom exception handlers
 create_exception_handlers(app)
@@ -230,3 +250,31 @@ async def root() -> dict[str, str]:
         info["database"] = "not configured"
 
     return info
+
+
+@app.get(
+    "/metrics",
+    summary="Prometheus Metrics",
+    description="""
+Export Prometheus metrics for monitoring and observability.
+
+This endpoint provides metrics in Prometheus format for:
+- HTTP request counts and durations
+- Service registration metrics
+- Database connection pool metrics
+- Service discovery statistics
+- Error rates and types
+
+Used by Prometheus server for scraping metrics data.
+    """,
+    response_description="Prometheus metrics in text format", 
+    include_in_schema=False,  # Hide from OpenAPI docs
+    tags=["monitoring"],
+)
+async def metrics() -> Response:
+    """Export Prometheus metrics."""
+    metrics_data = generate_latest(service_registry)
+    return Response(
+        content=metrics_data,
+        media_type=CONTENT_TYPE_LATEST,
+    )

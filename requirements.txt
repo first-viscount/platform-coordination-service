@@ -22,5 +22,9 @@ sqlalchemy==2.0.38
 asyncpg==0.30.0
 alembic==1.15.0
 
+# Monitoring and metrics
+prometheus-client==0.22.1
+prometheus-fastapi-instrumentator==7.0.0
+
 # Future dependencies (uncomment when needed)
 # redis==5.2.1

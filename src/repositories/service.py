@@ -11,10 +11,12 @@ from sqlalchemy.orm import selectinload
 
 from src.core.exceptions import ConflictError
 from src.core.logging import get_logger
+from src.core.metrics import get_metrics_collector, db_metrics_context
 from src.models.service import Service, ServiceEvent, ServiceStatus
 from src.repositories.base import BaseRepository
 
 logger = get_logger(__name__)
+metrics = get_metrics_collector()
 
 
 class ServiceRepository(BaseRepository[Service]):
@@ -22,52 +24,65 @@ class ServiceRepository(BaseRepository[Service]):
 
     async def create(self, **kwargs: Any) -> Service:
         """Create a new service registration."""
-        try:
-            service = Service(**kwargs)
-            self.session.add(service)
-            
-            await self.session.commit()
-            await self.session.refresh(service)
-            
-            # Create event in a separate transaction to avoid flush issues
+        async with db_metrics_context(self.session, "create", "services"):
             try:
-                event = ServiceEvent(
-                    service_id=service.id,
-                    event_type="service_registered",
-                    event_data={
-                        "service_name": service.name,
-                        "host": service.host,
-                        "port": service.port,
-                    },
-                )
-                self.session.add(event)
+                service = Service(**kwargs)
+                self.session.add(service)
+                
                 await self.session.commit()
-            except Exception as e:
-                # Log error but don't fail the service creation
-                logger.error("Failed to create service event", error=str(e))
+                await self.session.refresh(service)
+                
+                # Record service registration metrics
+                service_type = kwargs.get("type", "unknown")
+                if hasattr(service_type, "value"):
+                    service_type = service_type.value
+                metrics.record_service_registration(str(service_type), 0, success=True)
+                
+                # Create event in a separate transaction to avoid flush issues
+                try:
+                    async with db_metrics_context(self.session, "create", "service_events"):
+                        event = ServiceEvent(
+                            service_id=service.id,
+                            event_type="service_registered",
+                            event_data={
+                                "service_name": service.name,
+                                "host": service.host,
+                                "port": service.port,
+                            },
+                        )
+                        self.session.add(event)
+                        await self.session.commit()
+                except Exception as e:
+                    # Log error but don't fail the service creation
+                    logger.error("Failed to create service event", error=str(e))
 
-            logger.info(
-                "Service registered",
-                service_id=str(service.id),
-                service_name=service.name,
-                host=service.host,
-                port=service.port,
-            )
-            return service
-        except IntegrityError as e:
-            await self.session.rollback()
-            logger.error("Service registration failed - duplicate", error=str(e))
-            raise ConflictError(
-                "Service already exists with this name, host, and port"
-            ) from e
+                logger.info(
+                    "Service registered",
+                    service_id=str(service.id),
+                    service_name=service.name,
+                    host=service.host,
+                    port=service.port,
+                )
+                return service
+            except IntegrityError as e:
+                await self.session.rollback()
+                service_type = kwargs.get("type", "unknown")
+                if hasattr(service_type, "value"):
+                    service_type = service_type.value
+                metrics.record_service_registration(str(service_type), 0, success=False)
+                logger.error("Service registration failed - duplicate", error=str(e))
+                raise ConflictError(
+                    "Service already exists with this name, host, and port"
+                ) from e
 
     async def get(self, id: UUID, for_update: bool = False) -> Service | None:
         """Get service by ID."""
-        stmt = select(Service).where(Service.id == id)
-        if for_update:
-            stmt = stmt.with_for_update()
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        async with db_metrics_context(self.session, "select", "services"):
+            stmt = select(Service).where(Service.id == id)
+            if for_update:
+                stmt = stmt.with_for_update()
+            result = await self.session.execute(stmt)
+            return result.scalar_one_or_none()
 
     async def get_by_name_host_port(
         self, name: str, host: str, port: int
@@ -154,55 +169,67 @@ class ServiceRepository(BaseRepository[Service]):
         **filters: Any,
     ) -> list[Service]:
         """List services with optional filters."""
-        # Extract specific filters
-        type = filters.get("type")
-        status = filters.get("status")
-        tag_key = filters.get("tag_key")
-        tag_value = filters.get("tag_value")
-        include_events = filters.get("include_events", False)
+        async with db_metrics_context(self.session, "select", "services"):
+            # Extract specific filters
+            type = filters.get("type")
+            status = filters.get("status")
+            tag_key = filters.get("tag_key")
+            tag_value = filters.get("tag_value")
+            include_events = filters.get("include_events", False)
 
-        stmt = select(Service)
+            stmt = select(Service)
 
-        # Apply filters
-        if type:
-            stmt = stmt.where(Service.type == type)
-        if status:
-            stmt = stmt.where(Service.status == status)
-        if tag_key and tag_value:
-            # PostgreSQL JSON query - extract and compare text
-            from sqlalchemy import text
-            stmt = stmt.where(
-                text("service_metadata->'tags'->>:tag_key = :tag_value").bindparams(
-                    tag_key=tag_key, tag_value=tag_value
+            # Apply filters
+            if type:
+                stmt = stmt.where(Service.type == type)
+            if status:
+                stmt = stmt.where(Service.status == status)
+            if tag_key and tag_value:
+                # PostgreSQL JSON query - extract and compare text
+                from sqlalchemy import text
+                stmt = stmt.where(
+                    text("service_metadata->'tags'->>:tag_key = :tag_value").bindparams(
+                        tag_key=tag_key, tag_value=tag_value
+                    )
                 )
-            )
 
-        # Include events if requested
-        if include_events:
-            stmt = stmt.options(selectinload(Service.events))
+            # Include events if requested
+            if include_events:
+                stmt = stmt.options(selectinload(Service.events))
 
-        # Order by name for consistent results
-        stmt = stmt.order_by(Service.name)
+            # Order by name for consistent results
+            stmt = stmt.order_by(Service.name)
 
-        result = await self.session.execute(stmt)
-        return list(result.scalars().all())
+            result = await self.session.execute(stmt)
+            services = list(result.scalars().all())
+            
+            # Record query metrics
+            metrics.record_service_query("list", 0, success=True)
+            
+            return services
 
     async def find_by_name(
         self, name: str, status: ServiceStatus | None = None, exclude_unhealthy: bool = True
     ) -> builtins.list[Service]:
         """Find services by name with optional status filter."""
-        stmt = select(Service).where(Service.name == name)
+        async with db_metrics_context(self.session, "select", "services"):
+            stmt = select(Service).where(Service.name == name)
 
-        if status:
-            stmt = stmt.where(Service.status == status)
-        elif exclude_unhealthy:
-            # By default, exclude unhealthy services
-            stmt = stmt.where(Service.status != ServiceStatus.UNHEALTHY)
+            if status:
+                stmt = stmt.where(Service.status == status)
+            elif exclude_unhealthy:
+                # By default, exclude unhealthy services
+                stmt = stmt.where(Service.status != ServiceStatus.UNHEALTHY)
 
-        stmt = stmt.order_by(Service.last_seen_at.desc())
+            stmt = stmt.order_by(Service.last_seen_at.desc())
 
-        result = await self.session.execute(stmt)
-        return list(result.scalars().all())
+            result = await self.session.execute(stmt)
+            services = list(result.scalars().all())
+            
+            # Record service discovery metrics
+            metrics.record_service_discovery(name, len(services) > 0)
+            
+            return services
 
     async def update_health_status(
         self, id: UUID, healthy: bool, check_time: datetime | None = None

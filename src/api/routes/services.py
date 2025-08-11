@@ -16,6 +16,7 @@ from src.api.models.service import (
 )
 from src.core.database import get_db
 from src.core.exceptions import ConflictError
+from src.core.metrics import get_metrics_collector
 from src.models.service import Service as ServiceModel
 from src.models.service import ServiceStatus as DBServiceStatus
 from src.models.service import ServiceType as DBServiceType
@@ -23,6 +24,7 @@ from src.repositories.service import ServiceRepository
 
 router = APIRouter()
 logger = get_logger(__name__)
+metrics = get_metrics_collector()
 
 
 def _convert_to_service_info(service: ServiceModel) -> ServiceInfo:

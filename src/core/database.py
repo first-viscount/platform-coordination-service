@@ -37,6 +37,8 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Dependency to get database session."""
     async with async_session() as session:
         try:
+            # Update pool metrics if available
+            _update_pool_metrics()
             yield session
             await session.commit()
         except Exception:
@@ -44,6 +46,26 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close()
+
+
+def _update_pool_metrics() -> None:
+    """Update database connection pool metrics."""
+    try:
+        # Import here to avoid circular imports
+        from src.core.metrics import get_metrics_collector
+        
+        metrics = get_metrics_collector()
+        
+        # Get pool statistics if available
+        if hasattr(engine, "pool"):
+            pool = engine.pool
+            metrics.update_db_pool_metrics(
+                pool_size=pool.size(),
+                checked_out=pool.checkedout(),
+                overflow=pool.overflow(),
+            )
+    except Exception as e:
+        logger.debug("Could not update pool metrics", error=str(e))
 
 
 @asynccontextmanager
