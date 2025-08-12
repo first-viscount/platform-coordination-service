@@ -3,8 +3,8 @@
 from fastapi import APIRouter, Path, Query
 from pydantic import BaseModel, Field
 
-from src.core.error_utils import raise_not_found, raise_validation_error
-from src.core.exceptions import (
+from ...core.error_utils import raise_not_found, raise_validation_error
+from ...core.exceptions import (
     BadRequestError,
     ConflictError,
     ValidationError,
@@ -263,7 +263,8 @@ This endpoint is useful for:
                                         },
                                     ],
                                     "timestamp": "2025-01-29T12:00:00Z",
-                                    "path": "/api/v1/examples/error-examples/validation",
+                                    "path": "/api/v1/examples/error-examples/"
+                                    "validation",
                                 }
                             },
                         },
@@ -276,11 +277,13 @@ This endpoint is useful for:
                                     "code": "BAD_REQUEST",
                                     "details": [
                                         {
-                                            "message": "Missing required header: X-Request-ID"
+                                            "message": "Missing required header: "
+                                            "X-Request-ID"
                                         }
                                     ],
                                     "timestamp": "2025-01-29T12:00:00Z",
-                                    "path": "/api/v1/examples/error-examples/bad_request",
+                                    "path": "/api/v1/examples/error-examples/"
+                                    "bad_request",
                                 }
                             },
                         },

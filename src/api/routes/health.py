@@ -6,8 +6,8 @@ from typing import Any
 from fastapi import APIRouter
 from pydantic import BaseModel, field_serializer
 
-from src.core.config import settings
-from src.core.logging import get_logger
+from ...core.config import settings
+from ...core.logging import get_logger
 
 router = APIRouter()
 logger = get_logger(__name__)

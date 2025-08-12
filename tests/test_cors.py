@@ -196,5 +196,6 @@ class TestCORSConfiguration:
             if origin in settings.cors_origins:
                 assert response.headers.get("access-control-allow-origin") == origin
             else:
-                # Non-allowed origins might not get the header or get a different response
+                # Non-allowed origins might not get the header or get a
+                # different response
                 assert response.headers.get("access-control-allow-origin") != origin

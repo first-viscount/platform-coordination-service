@@ -1,14 +1,13 @@
 """Background tasks for updating metrics."""
 
 import asyncio
-from typing import Dict, Any
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
-from src.core.database import get_db_context
-from src.core.logging import get_logger
-from src.core.metrics import get_metrics_collector
-from src.models.service import Service, ServiceStatus, ServiceType
+from ..models.service import Service, ServiceStatus, ServiceType
+from .database import get_db_context
+from .logging import get_logger
+from .metrics import get_metrics_collector
 
 logger = get_logger(__name__)
 
@@ -18,7 +17,7 @@ class BackgroundMetricsUpdater:
 
     def __init__(self, update_interval: int = 30) -> None:
         """Initialize the background metrics updater.
-        
+
         Args:
             update_interval: Interval in seconds between metric updates
         """
@@ -32,7 +31,7 @@ class BackgroundMetricsUpdater:
         if self._running:
             logger.warning("Background metrics updater is already running")
             return
-            
+
         self._running = True
         self._task = asyncio.create_task(self._update_loop())
         logger.info("Background metrics updater started", interval=self.update_interval)
@@ -65,33 +64,31 @@ class BackgroundMetricsUpdater:
         try:
             async with get_db_context() as session:
                 # Query service counts by type and status
-                stmt = (
-                    select(
-                        Service.type,
-                        Service.status,
-                        func.count(Service.id).label("count")
-                    )
-                    .group_by(Service.type, Service.status)
-                )
-                
+                stmt = select(
+                    Service.type, Service.status, func.count(Service.id).label("count")
+                ).group_by(Service.type, Service.status)
+
                 result = await session.execute(stmt)
                 service_counts = result.all()
-                
+
                 # Reset all gauges to zero first
                 for service_type in ServiceType:
                     for status in ServiceStatus:
                         self.metrics.update_active_services_count(
                             service_type.value, status.value, 0
                         )
-                
+
                 # Update with actual counts
                 for service_type, status, count in service_counts:
                     self.metrics.update_active_services_count(
                         service_type.value, status.value, count
                     )
-                    
-                logger.debug("Updated active services metrics", total_types_statuses=len(service_counts))
-                
+
+                logger.debug(
+                    "Updated active services metrics",
+                    total_types_statuses=len(service_counts),
+                )
+
         except Exception as e:
             logger.error("Failed to update active services metrics", error=str(e))
 

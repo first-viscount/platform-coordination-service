@@ -6,8 +6,8 @@ from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base
 
-from src.core.config import settings
-from src.core.logging import get_logger
+from .config import settings
+from .logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -52,17 +52,17 @@ def _update_pool_metrics() -> None:
     """Update database connection pool metrics."""
     try:
         # Import here to avoid circular imports
-        from src.core.metrics import get_metrics_collector
-        
+        from .metrics import get_metrics_collector
+
         metrics = get_metrics_collector()
-        
+
         # Get pool statistics if available
         if hasattr(engine, "pool"):
             pool = engine.pool
             metrics.update_db_pool_metrics(
-                pool_size=pool.size(),
-                checked_out=pool.checkedout(),
-                overflow=pool.overflow(),
+                pool_size=getattr(pool, "size", lambda: 0)(),
+                checked_out=getattr(pool, "checkedout", lambda: 0)(),
+                overflow=getattr(pool, "overflow", lambda: 0)(),
             )
     except Exception as e:
         logger.debug("Could not update pool metrics", error=str(e))

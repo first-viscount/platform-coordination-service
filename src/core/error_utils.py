@@ -13,7 +13,7 @@ def raise_not_found(
         identifier: Resource identifier
         context: Additional context
     """
-    from src.core.exceptions import NotFoundError
+    from .exceptions import NotFoundError
 
     raise NotFoundError(
         f"{resource.capitalize()} with ID '{identifier}' not found",
@@ -34,7 +34,7 @@ def raise_validation_error(
         field: Field that failed validation
         details: Additional error details
     """
-    from src.core.exceptions import ValidationError
+    from .exceptions import ValidationError
 
     error_details = details or []
     if field:
@@ -59,7 +59,7 @@ def raise_conflict(
         message: Conflict description
         context: Additional context
     """
-    from src.core.exceptions import ConflictError
+    from .exceptions import ConflictError
 
     raise ConflictError(
         message=message,
@@ -74,7 +74,7 @@ def handle_database_error(exc: Exception) -> None:
     Args:
         exc: Database exception
     """
-    from src.core.exceptions import ConflictError, InternalServerError
+    from .exceptions import ConflictError, InternalServerError
 
     # Handle specific database errors
     error_message = str(exc).lower()
@@ -82,13 +82,13 @@ def handle_database_error(exc: Exception) -> None:
     if "duplicate" in error_message or "unique constraint" in error_message:
         raise ConflictError("Resource already exists", error_code="DUPLICATE_RESOURCE")
     elif "foreign key" in error_message:
-        from src.core.exceptions import ValidationError
+        from .exceptions import ValidationError
 
         raise ValidationError(
             "Referenced resource does not exist", error_code="INVALID_REFERENCE"
         )
     elif "connection" in error_message or "timeout" in error_message:
-        from src.core.exceptions import ServiceUnavailableError
+        from .exceptions import ServiceUnavailableError
 
         raise ServiceUnavailableError(
             "Database connection error", error_code="DATABASE_UNAVAILABLE"

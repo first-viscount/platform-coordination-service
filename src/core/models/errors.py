@@ -48,7 +48,8 @@ class ErrorResponse(BaseModel):
 class ValidationErrorDetail(ErrorDetail):
     """Validation-specific error detail."""
 
-    # field is inherited from ErrorDetail, but we document that it's expected to be non-None for validation errors
+    # field is inherited from ErrorDetail, but we document that it's expected
+    # to be non-None for validation errors
     value: Any | None = Field(None, description="The invalid value (sanitized)")
     constraint: str | None = Field(
         None, description="Validation constraint that failed"

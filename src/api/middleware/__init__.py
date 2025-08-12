@@ -1,6 +1,6 @@
 """API middleware."""
 
-from src.api.middleware.error_handling import ErrorHandlingMiddleware
-from src.api.middleware.logging import LoggingMiddleware
+from .error_handling import ErrorHandlingMiddleware
+from .logging import LoggingMiddleware
 
 __all__ = ["LoggingMiddleware", "ErrorHandlingMiddleware"]

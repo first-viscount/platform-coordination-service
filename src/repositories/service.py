@@ -5,15 +5,15 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, delete, select, func, or_
+from sqlalchemy import and_, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
-from src.core.exceptions import ConflictError
-from src.core.logging import get_logger
-from src.core.metrics import get_metrics_collector, db_metrics_context
-from src.models.service import Service, ServiceEvent, ServiceStatus
-from src.repositories.base import BaseRepository
+from ..core.exceptions import ConflictError
+from ..core.logging import get_logger
+from ..core.metrics import db_metrics_context, get_metrics_collector
+from ..models.service import Service, ServiceEvent, ServiceStatus
+from .base import BaseRepository
 
 logger = get_logger(__name__)
 metrics = get_metrics_collector()
@@ -28,19 +28,21 @@ class ServiceRepository(BaseRepository[Service]):
             try:
                 service = Service(**kwargs)
                 self.session.add(service)
-                
+
                 await self.session.commit()
                 await self.session.refresh(service)
-                
+
                 # Record service registration metrics
                 service_type = kwargs.get("type", "unknown")
                 if hasattr(service_type, "value"):
                     service_type = service_type.value
                 metrics.record_service_registration(str(service_type), 0, success=True)
-                
+
                 # Create event in a separate transaction to avoid flush issues
                 try:
-                    async with db_metrics_context(self.session, "create", "service_events"):
+                    async with db_metrics_context(
+                        self.session, "create", "service_events"
+                    ):
                         event = ServiceEvent(
                             service_id=service.id,
                             event_type="service_registered",
@@ -187,6 +189,7 @@ class ServiceRepository(BaseRepository[Service]):
             if tag_key and tag_value:
                 # PostgreSQL JSON query - extract and compare text
                 from sqlalchemy import text
+
                 stmt = stmt.where(
                     text("service_metadata->'tags'->>:tag_key = :tag_value").bindparams(
                         tag_key=tag_key, tag_value=tag_value
@@ -202,14 +205,17 @@ class ServiceRepository(BaseRepository[Service]):
 
             result = await self.session.execute(stmt)
             services = list(result.scalars().all())
-            
+
             # Record query metrics
             metrics.record_service_query("list", 0, success=True)
-            
+
             return services
 
     async def find_by_name(
-        self, name: str, status: ServiceStatus | None = None, exclude_unhealthy: bool = True
+        self,
+        name: str,
+        status: ServiceStatus | None = None,
+        exclude_unhealthy: bool = True,
     ) -> builtins.list[Service]:
         """Find services by name with optional status filter."""
         async with db_metrics_context(self.session, "select", "services"):
@@ -225,10 +231,10 @@ class ServiceRepository(BaseRepository[Service]):
 
             result = await self.session.execute(stmt)
             services = list(result.scalars().all())
-            
+
             # Record service discovery metrics
             metrics.record_service_discovery(name, len(services) > 0)
-            
+
             return services
 
     async def update_health_status(

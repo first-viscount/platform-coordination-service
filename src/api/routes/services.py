@@ -7,20 +7,20 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from src.api.models.service import (
+from ...core.database import get_db
+from ...core.exceptions import ConflictError
+from ...core.metrics import get_metrics_collector
+from ...models.service import Service as ServiceModel
+from ...models.service import ServiceStatus as DBServiceStatus
+from ...models.service import ServiceType as DBServiceType
+from ...repositories.service import ServiceRepository
+from ..models.service import (
     ServiceInfo,
     ServiceMetadata,
     ServiceRegistration,
     ServiceStatus,
     ServiceType,
 )
-from src.core.database import get_db
-from src.core.exceptions import ConflictError
-from src.core.metrics import get_metrics_collector
-from src.models.service import Service as ServiceModel
-from src.models.service import ServiceStatus as DBServiceStatus
-from src.models.service import ServiceType as DBServiceType
-from src.repositories.service import ServiceRepository
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -36,9 +36,9 @@ def _convert_to_service_info(service: ServiceModel) -> ServiceInfo:
         environment=metadata_dict.get("environment", "development"),
         region=metadata_dict.get("region"),
         tags=metadata_dict.get("tags", {}),
-        capabilities=metadata_dict.get("capabilities", [])
+        capabilities=metadata_dict.get("capabilities", []),
     )
-    
+
     return ServiceInfo(
         id=str(service.id),
         name=service.name,
@@ -47,7 +47,7 @@ def _convert_to_service_info(service: ServiceModel) -> ServiceInfo:
         port=service.port,
         status=ServiceStatus(service.status.value),
         metadata=metadata,
-        health_check_endpoint=service.health_check_endpoint,
+        health_check_endpoint=service.health_check_endpoint or "/health",
         registered_at=service.registered_at,
         last_seen_at=service.last_seen_at,
         health_check_failures=service.health_check_failures,
@@ -57,7 +57,7 @@ def _convert_to_service_info(service: ServiceModel) -> ServiceInfo:
 @router.post("/register", response_model=ServiceInfo, status_code=201)
 async def register_service(
     registration: ServiceRegistration,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ServiceInfo:
     """Register a new service or update existing registration."""
     repo = ServiceRepository(db)
@@ -128,13 +128,14 @@ async def register_service(
             )
             if updated:
                 return _convert_to_service_info(updated)
-        
+
         # If we still can't handle it, raise the error
         raise HTTPException(409, "Service registration conflict") from None
 
 
 @router.get("/", response_model=list[ServiceInfo])
 async def list_services(
+    db: Annotated[AsyncSession, Depends(get_db)],
     type: Annotated[
         ServiceType | None, Query(description="Filter by service type")
     ] = None,
@@ -144,7 +145,6 @@ async def list_services(
     tag: Annotated[
         str | None, Query(description="Filter by tag (format: key=value)")
     ] = None,
-    db: AsyncSession = Depends(get_db),
 ) -> list[ServiceInfo]:
     """List all registered services with optional filters."""
     repo = ServiceRepository(db)
@@ -177,7 +177,7 @@ async def list_services(
 @router.get("/{service_id}", response_model=ServiceInfo)
 async def get_service(
     service_id: UUID,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ServiceInfo:
     """Get detailed information about a specific service."""
     repo = ServiceRepository(db)
@@ -193,7 +193,7 @@ async def get_service(
 @router.delete("/{service_id}", status_code=204)
 async def unregister_service(
     service_id: UUID,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     """Unregister a service."""
     repo = ServiceRepository(db)
@@ -215,10 +215,10 @@ async def unregister_service(
 @router.get("/discover/{service_name}", response_model=list[ServiceInfo])
 async def discover_services(
     service_name: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
     status: Annotated[
         ServiceStatus, Query(description="Minimum acceptable status")
     ] = ServiceStatus.HEALTHY,
-    db: AsyncSession = Depends(get_db),
 ) -> list[ServiceInfo]:
     """Discover services by name, returning only healthy instances."""
     repo = ServiceRepository(db)
@@ -243,7 +243,7 @@ async def discover_services(
 async def update_health_status(
     service_id: UUID,
     healthy: bool,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ServiceInfo:
     """Update service health status."""
     repo = ServiceRepository(db)

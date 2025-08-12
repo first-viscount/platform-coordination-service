@@ -12,10 +12,10 @@ from pydantic import ValidationError as PydanticValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from src.core.config import settings
-from src.core.exceptions import PlatformCoordinationError
-from src.core.logging import log_event
-from src.core.models.errors import ErrorDetail, ErrorResponse
+from ...core.config import settings
+from ...core.exceptions import PlatformCoordinationError
+from ...core.logging import log_event
+from ...core.models.errors import ErrorDetail, ErrorResponse
 
 
 class ErrorHandlingMiddleware(BaseHTTPMiddleware):
@@ -34,7 +34,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             return await self.handle_exception(request, exc)
 
     async def handle_exception(self, request: Request, exc: Exception) -> JSONResponse:
-        """Handle different types of exceptions and return appropriate error responses."""
+        """Handle different types of exceptions and return appropriate responses."""
         # Get logger and correlation ID from request state
         logger = getattr(request.state, "logger", None)
         correlation_id = getattr(request.state, "correlation_id", None)

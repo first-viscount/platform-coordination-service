@@ -1,7 +1,7 @@
 """Pytest configuration for integration tests."""
 
 import os
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 import pytest
 import pytest_asyncio
@@ -14,7 +14,7 @@ from src.main_db import app
 # Test database URL - use separate test database
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://coordination_user:coordination_dev_password@localhost:5432/platform_coordination_test"
+    "postgresql+asyncpg://coordination_user:coordination_dev_password@localhost:5432/platform_coordination_test",
 )
 
 
@@ -52,16 +52,16 @@ async def db_session(test_engine, setup_database) -> AsyncGenerator[AsyncSession
 async def test_client(test_engine, setup_database):
     """Create a test client with proper database session handling."""
     from sqlalchemy.ext.asyncio import async_sessionmaker
-    
+
     # Create a session factory for the test
-    TestSessionLocal = async_sessionmaker(
+    test_session_local = async_sessionmaker(
         test_engine,
         class_=AsyncSession,
         expire_on_commit=False,
     )
-    
+
     async def override_get_db():
-        async with TestSessionLocal() as session:
+        async with test_session_local() as session:
             try:
                 yield session
                 await session.commit()
@@ -70,14 +70,16 @@ async def test_client(test_engine, setup_database):
                 raise
             finally:
                 await session.close()
-    
+
     app.dependency_overrides[get_db] = override_get_db
-    
+
     import httpx
-    
-    async with httpx.AsyncClient(base_url="http://test", transport=httpx.ASGITransport(app=app)) as client:
+
+    async with httpx.AsyncClient(
+        base_url="http://test", transport=httpx.ASGITransport(app=app)
+    ) as client:
         yield client
-    
+
     app.dependency_overrides.clear()
 
 
@@ -92,11 +94,9 @@ def sample_service_data():
         "metadata": {
             "version": "1.0.0",
             "environment": "test",
-            "tags": {
-                "team": "platform"
-            }
+            "tags": {"team": "platform"},
         },
-        "health_check_endpoint": "/health"
+        "health_check_endpoint": "/health",
     }
 
 
@@ -109,27 +109,43 @@ def multiple_services_data():
             "type": "api",
             "host": "api.example.com",
             "port": 8080,
-            "metadata": {"version": "1.0.0", "environment": "production", "tags": {"env": "prod", "region": "us-east"}}
+            "metadata": {
+                "version": "1.0.0",
+                "environment": "production",
+                "tags": {"env": "prod", "region": "us-east"},
+            },
         },
         {
             "name": "worker-service",
             "type": "worker",
             "host": "worker1.example.com",
             "port": 9090,
-            "metadata": {"version": "1.0.0", "environment": "production", "tags": {"env": "prod", "region": "us-west"}}
+            "metadata": {
+                "version": "1.0.0",
+                "environment": "production",
+                "tags": {"env": "prod", "region": "us-west"},
+            },
         },
         {
             "name": "scheduler-service",
-            "type": "worker", 
+            "type": "worker",
             "host": "scheduler.example.com",
             "port": 7070,
-            "metadata": {"version": "1.0.0", "environment": "staging", "tags": {"env": "staging", "region": "us-east"}}
+            "metadata": {
+                "version": "1.0.0",
+                "environment": "staging",
+                "tags": {"env": "staging", "region": "us-east"},
+            },
         },
         {
             "name": "cache-service",
             "type": "cache",
             "host": "cache.example.com",
             "port": 6379,
-            "metadata": {"version": "1.0.0", "environment": "production", "tags": {"env": "prod", "region": "us-east"}}
-        }
+            "metadata": {
+                "version": "1.0.0",
+                "environment": "production",
+                "tags": {"env": "prod", "region": "us-east"},
+            },
+        },
     ]

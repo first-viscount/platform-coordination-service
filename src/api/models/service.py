@@ -53,7 +53,8 @@ class ServiceRegistration(BaseModel):
         """Ensure service name follows naming conventions."""
         if not v.replace("-", "").replace("_", "").isalnum():
             raise ValueError(
-                "Service name must contain only alphanumeric characters, hyphens, and underscores"
+                "Service name must contain only alphanumeric characters, "
+                "hyphens, and underscores"
             )
         return v.lower()
 

@@ -7,7 +7,7 @@ from collections.abc import Callable
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from src.core.logging import create_request_logger, log_event
+from ...core.logging import create_request_logger, log_event
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):

@@ -1,4 +1,4 @@
-"""Structured logging configuration using structlog with thread-safe context management."""
+"""Structured logging configuration using structlog with context management."""
 
 import logging
 import sys

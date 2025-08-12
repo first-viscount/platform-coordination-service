@@ -77,6 +77,18 @@ clean: ## Clean up generated files
 	rm -rf build dist *.egg-info
 	@echo "$(GREEN)✓ Cleanup complete$(NC)"
 
+## Quality Commands (Service-Specific)
+quality-check: ## Run quality checks for this service
+	@./quality-check.sh
+
+quality-fix: ## Auto-fix quality issues in this service
+	@ruff check src tests --fix --ignore B008
+	@black src tests || true
+
+quality-report: ## Generate quality report for this service  
+	@./quality-check.sh
+	@echo "Report saved to quality-report.md"
+
 # Convenience targets
 fmt: format ## Alias for format
 check: lint type-check test ## Run all checks (lint, type-check, test)

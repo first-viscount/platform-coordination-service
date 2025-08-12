@@ -7,21 +7,23 @@ from typing import Any
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from src.api.middleware.error_handling import (
     ErrorHandlingMiddleware,
     create_exception_handlers,
 )
-from src.api.middleware.metrics import setup_http_metrics_middleware
-from src.api.routes import example, health
+from src.api.middleware.metrics import HTTPMetricsMiddleware
+from src.api.routes import example, health, services
+from src.core.background_metrics import (
+    start_background_metrics,
+    stop_background_metrics,
+)
 from src.core.config import settings
 from src.core.database import close_db, init_db
 from src.core.logging import get_logger, setup_logging
+from src.core.metrics import service_registry
 from src.core.middleware import LoggingMiddleware
-from src.core.metrics import service_registry, get_metrics_collector
-from src.core.background_metrics import start_background_metrics, stop_background_metrics
-from src.api.routes import services
 
 # Setup logging
 setup_logging(
@@ -59,14 +61,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Shutdown
     logger.info("Shutting down Platform Coordination Service")
-    
+
     # Stop background metrics collection
     try:
         await stop_background_metrics()
         logger.info("Background metrics collection stopped")
     except Exception as e:
         logger.error("Failed to stop background metrics", error=str(e))
-        
+
     if settings.database_url:
         await close_db()
 
@@ -83,7 +85,8 @@ def custom_openapi() -> dict[str, Any]:
         description="""
 ## Platform Coordination Service API
 
-The Platform Coordination Service provides a centralized API for managing and coordinating various platform services.
+The Platform Coordination Service provides a centralized API for managing
+and coordinating various platform services.
 
 ### Key Features:
 - **Service Registry**: Register and discover platform services
@@ -105,7 +108,8 @@ This API follows semantic versioning. The current version is v1.
 - Breaking changes will result in a new major version
 
 ### Authentication
-Currently, the API is open for development. Authentication will be added in future versions.
+Currently, the API is open for development. Authentication will be added
+in future versions.
 
 ### Error Responses
 All error responses follow a consistent format:
@@ -182,7 +186,7 @@ app.openapi = custom_openapi  # type: ignore[method-assign]
 # Add middleware (order matters - error handling should be outermost)
 app.add_middleware(ErrorHandlingMiddleware)
 app.add_middleware(LoggingMiddleware)
-app.add_middleware(setup_http_metrics_middleware())
+app.add_middleware(HTTPMetricsMiddleware)
 
 # Create custom exception handlers
 create_exception_handlers(app)
@@ -267,7 +271,7 @@ This endpoint provides metrics in Prometheus format for:
 
 Used by Prometheus server for scraping metrics data.
     """,
-    response_description="Prometheus metrics in text format", 
+    response_description="Prometheus metrics in text format",
     include_in_schema=False,  # Hide from OpenAPI docs
     tags=["monitoring"],
 )

@@ -1,13 +1,15 @@
 """Prometheus metrics configuration and collectors."""
 
 import time
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator
+from typing import Any
 
-from prometheus_client import Counter, Gauge, Histogram, CollectorRegistry, REGISTRY
+from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
+from sqlalchemy import Engine
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.logging import get_logger
+from .logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -61,7 +63,7 @@ db_pool_size = Gauge(
 )
 
 db_pool_checked_out_connections = Gauge(
-    "db_pool_checked_out_connections", 
+    "db_pool_checked_out_connections",
     "Number of active database connections",
     registry=service_registry,
 )
@@ -140,9 +142,7 @@ class MetricsCollector:
             query_type=query_type, status=status
         ).observe(duration)
 
-    def record_service_discovery(
-        self, service_name: str, found: bool = True
-    ) -> None:
+    def record_service_discovery(self, service_name: str, found: bool = True) -> None:
         """Record service discovery request."""
         status = "found" if found else "not_found"
         service_discovery_requests_total.labels(
@@ -187,9 +187,7 @@ class MetricsCollector:
                     labels.get("service_type", "unknown"), duration
                 )
             elif operation_type == "service_query":
-                self.record_service_query(
-                    labels.get("query_type", "unknown"), duration
-                )
+                self.record_service_query(labels.get("query_type", "unknown"), duration)
             elif operation_type == "database_query":
                 self.record_database_query(
                     labels.get("operation", "unknown"),
@@ -218,14 +216,15 @@ async def db_metrics_context(
     finally:
         duration = time.time() - start_time
         metrics_collector.record_database_query(operation, table, duration)
-        
+
         # Update connection pool metrics if available
-        if hasattr(session.get_bind(), "pool"):
-            pool = session.get_bind().pool
+        bind = session.get_bind()
+        if isinstance(bind, Engine) and hasattr(bind, "pool"):
+            pool = bind.pool
             # NullPool (used in tests) doesn't have these attributes
             if hasattr(pool, "size"):
                 metrics_collector.update_db_pool_metrics(
-                    pool_size=pool.size() if callable(pool.size) else 0,
-                    checked_out=pool.checkedout() if hasattr(pool, "checkedout") else 0,
-                    overflow=pool.overflow() if hasattr(pool, "overflow") else 0,
+                    pool_size=getattr(pool, "size", lambda: 0)(),
+                    checked_out=getattr(pool, "checkedout", lambda: 0)(),
+                    overflow=getattr(pool, "overflow", lambda: 0)(),
                 )

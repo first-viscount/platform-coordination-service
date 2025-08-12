@@ -151,7 +151,8 @@ class TestExampleEndpoints:
         }
 
         # Note: This test might fail due to a bug in error detail handling
-        # The raise_validation_error function passes details that don't match ErrorDetail model
+        # The raise_validation_error function passes details that don't match
+        # ErrorDetail model
         try:
             response = client.post("/api/v1/examples/items", json=item_data)
             # If it works, check the response
