@@ -11,7 +11,7 @@ client = TestClient(app)
 class TestCORSConfiguration:
     """Test suite for CORS configuration."""
 
-    def test_cors_headers_on_simple_request(self):
+    def test_cors_headers_on_simple_request(self) -> None:
         """Test CORS headers on a simple GET request."""
         # Simple request from allowed origin
         response = client.get("/health", headers={"Origin": "http://localhost:3000"})
@@ -22,7 +22,7 @@ class TestCORSConfiguration:
         )
         assert response.headers["access-control-allow-credentials"] == "true"
 
-    def test_cors_preflight_request(self):
+    def test_cors_preflight_request(self) -> None:
         """Test CORS preflight (OPTIONS) request."""
         response = client.options(
             "/api/v1/examples/items",
@@ -43,7 +43,7 @@ class TestCORSConfiguration:
             "content-type" in response.headers["access-control-allow-headers"].lower()
         )
 
-    def test_cors_with_disallowed_origin(self):
+    def test_cors_with_disallowed_origin(self) -> None:
         """Test CORS with origin not in allowed list."""
         response = client.get("/health", headers={"Origin": "http://evil.com"})
 
@@ -54,7 +54,7 @@ class TestCORSConfiguration:
         # FastAPI's CORS middleware won't add the header if origin is not allowed
         assert response.headers.get("access-control-allow-origin") != "http://evil.com"
 
-    def test_cors_allows_all_methods(self):
+    def test_cors_allows_all_methods(self) -> None:
         """Test that CORS allows all HTTP methods as configured."""
         response = client.options(
             "/api/v1/examples/items",
@@ -71,7 +71,7 @@ class TestCORSConfiguration:
         for method in ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]:
             assert method in allowed_methods or "*" in allowed_methods
 
-    def test_cors_allows_all_headers(self):
+    def test_cors_allows_all_headers(self) -> None:
         """Test that CORS allows all headers as configured."""
         custom_headers = [
             "x-custom-header",
@@ -96,7 +96,7 @@ class TestCORSConfiguration:
             ).lower()
             assert header in allowed_headers or "*" in allowed_headers
 
-    def test_cors_on_error_responses(self):
+    def test_cors_on_error_responses(self) -> None:
         """Test that CORS headers are included on error responses."""
         # Test 404 error
         response = client.get(
@@ -131,14 +131,14 @@ class TestCORSConfiguration:
             response.headers["access-control-allow-origin"] == "http://localhost:3000"
         )
 
-    def test_cors_credentials_flag(self):
+    def test_cors_credentials_flag(self) -> None:
         """Test that credentials flag is properly set."""
         response = client.get("/health", headers={"Origin": "http://localhost:3000"})
 
         # allow_credentials is set to True in our configuration
         assert response.headers["access-control-allow-credentials"] == "true"
 
-    def test_cors_vary_header(self):
+    def test_cors_vary_header(self) -> None:
         """Test that Vary header includes Origin."""
         response = client.get("/health", headers={"Origin": "http://localhost:3000"})
 
@@ -146,7 +146,7 @@ class TestCORSConfiguration:
         # The Vary header should include Origin for proper caching
         assert "origin" in vary_header.lower()
 
-    def test_cors_on_all_endpoints(self):
+    def test_cors_on_all_endpoints(self) -> None:
         """Test that CORS is applied to all endpoints."""
         endpoints = [
             "/",
@@ -163,7 +163,7 @@ class TestCORSConfiguration:
             if response.status_code == 200:
                 assert "access-control-allow-origin" in response.headers
 
-    def test_cors_preflight_max_age(self):
+    def test_cors_preflight_max_age(self) -> None:
         """Test CORS preflight cache duration."""
         response = client.options(
             "/api/v1/examples/items",
@@ -178,7 +178,7 @@ class TestCORSConfiguration:
             max_age = int(response.headers["access-control-max-age"])
             assert max_age > 0  # Should have some caching
 
-    def test_multiple_origins_configuration(self):
+    def test_multiple_origins_configuration(self) -> None:
         """Test behavior with multiple configured origins."""
         # Our settings only have localhost:3000, but let's verify the behavior
         test_origins = [

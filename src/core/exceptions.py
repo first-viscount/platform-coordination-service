@@ -16,7 +16,7 @@ class PlatformCoordinationError(Exception):
         error_code: str | None = None,
         details: list[dict[str, Any]] | None = None,
         context: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         super().__init__(message)
         self.message = message
         self.status_code = status_code

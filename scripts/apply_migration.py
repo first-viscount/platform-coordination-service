@@ -340,13 +340,13 @@ def main():
             migrator.check_migration_status()
             
     except MigrationError as e:
-        logger.error(f"Migration failed: {e}")
+        logger.exception("Migration failed")
         sys.exit(1)
     except KeyboardInterrupt:
         logger.warning("Migration interrupted by user")
         sys.exit(130)
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
+        logger.exception("Unexpected error")
         sys.exit(1)
 
 

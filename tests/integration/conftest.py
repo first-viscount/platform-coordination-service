@@ -2,6 +2,7 @@
 
 import os
 from collections.abc import AsyncGenerator
+from typing import Any
 
 import pytest
 import pytest_asyncio
@@ -42,7 +43,7 @@ async def setup_database(test_engine):
 
 
 @pytest_asyncio.fixture(scope="function")
-async def db_session(test_engine, setup_database) -> AsyncGenerator[AsyncSession, None]:
+async def db_session(test_engine: Any, setup_database: Any) -> AsyncGenerator[AsyncSession, None]:
     """Create a test database session."""
     async with AsyncSession(test_engine, expire_on_commit=False) as session:
         yield session
@@ -60,7 +61,7 @@ async def test_client(test_engine, setup_database):
         expire_on_commit=False,
     )
 
-    async def override_get_db():
+    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
         async with test_session_local() as session:
             try:
                 yield session

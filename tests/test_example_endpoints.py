@@ -11,21 +11,21 @@ client = TestClient(app)
 class TestExampleEndpoints:
     """Test suite for example endpoints."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Clear the items database before each test."""
         items_db.clear()
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clear the items database after each test."""
         items_db.clear()
 
-    def test_list_items_empty(self):
+    def test_list_items_empty(self) -> None:
         """Test listing items when database is empty."""
         response = client.get("/api/v1/examples/items")
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_list_items_with_data(self):
+    def test_list_items_with_data(self) -> None:
         """Test listing items with existing data."""
         # Add test items
         from src.api.routes.example import ExampleItem
@@ -40,7 +40,7 @@ class TestExampleEndpoints:
         assert len(data) == 3
         assert all(item["id"] in ["test-1", "test-2", "test-3"] for item in data)
 
-    def test_list_items_pagination(self):
+    def test_list_items_pagination(self) -> None:
         """Test pagination parameters."""
         # Add 5 test items
         from src.api.routes.example import ExampleItem
@@ -72,7 +72,7 @@ class TestExampleEndpoints:
             for item in data
         )
 
-    def test_list_items_invalid_pagination(self):
+    def test_list_items_invalid_pagination(self) -> None:
         """Test invalid pagination parameters."""
         # Test negative limit
         response = client.get("/api/v1/examples/items?limit=-1")
@@ -86,7 +86,7 @@ class TestExampleEndpoints:
         response = client.get("/api/v1/examples/items?offset=-1")
         assert response.status_code == 422
 
-    def test_get_item_success(self):
+    def test_get_item_success(self) -> None:
         """Test getting an existing item."""
         from src.api.routes.example import ExampleItem
 
@@ -99,7 +99,7 @@ class TestExampleEndpoints:
         assert data["name"] == "Test Item"
         assert data["value"] == 42
 
-    def test_get_item_not_found(self):
+    def test_get_item_not_found(self) -> None:
         """Test getting a non-existent item."""
         response = client.get("/api/v1/examples/items/non-existent")
         assert response.status_code == 404
@@ -108,7 +108,7 @@ class TestExampleEndpoints:
         assert "non-existent" in data["message"]
         assert data["status_code"] == 404
 
-    def test_create_item_success(self):
+    def test_create_item_success(self) -> None:
         """Test creating a new item."""
         item_data = {"id": "new-item", "name": "New Test Item", "value": 100}
 
@@ -125,7 +125,7 @@ class TestExampleEndpoints:
         assert stored_item.name == item_data["name"]
         assert stored_item.value == item_data["value"]
 
-    def test_create_item_duplicate(self):
+    def test_create_item_duplicate(self) -> None:
         """Test creating an item with duplicate ID."""
         from src.api.routes.example import ExampleItem
 
@@ -142,7 +142,7 @@ class TestExampleEndpoints:
         assert "already exists" in data["message"]
         assert data["status_code"] == 409
 
-    def test_create_item_value_exceeds_limit(self):
+    def test_create_item_value_exceeds_limit(self) -> None:
         """Test creating an item with value exceeding business rule limit."""
         item_data = {
             "id": "high-value",
@@ -168,7 +168,7 @@ class TestExampleEndpoints:
             # Known issue with error detail structure
             pass
 
-    def test_create_item_invalid_data(self):
+    def test_create_item_invalid_data(self) -> None:
         """Test creating an item with invalid data."""
         # Missing required fields
         response = client.post("/api/v1/examples/items", json={})
@@ -193,7 +193,7 @@ class TestExampleEndpoints:
         )
         assert response.status_code == 422
 
-    def test_delete_item_success(self):
+    def test_delete_item_success(self) -> None:
         """Test deleting an existing item."""
         from src.api.routes.example import ExampleItem
 
@@ -207,7 +207,7 @@ class TestExampleEndpoints:
         # Verify item was removed
         assert "to-delete" not in items_db
 
-    def test_delete_item_not_found(self):
+    def test_delete_item_not_found(self) -> None:
         """Test deleting a non-existent item."""
         response = client.delete("/api/v1/examples/items/non-existent")
         assert response.status_code == 404
@@ -219,15 +219,15 @@ class TestExampleEndpoints:
 class TestErrorExamplesEndpoint:
     """Test suite for error examples endpoint."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Clear the items database before each test."""
         items_db.clear()
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clear the items database after each test."""
         items_db.clear()
 
-    def test_validation_error_example(self):
+    def test_validation_error_example(self) -> None:
         """Test triggering a validation error example."""
         response = client.get("/api/v1/examples/error-examples/validation")
         # ValidationError results in 422 status
@@ -239,7 +239,7 @@ class TestErrorExamplesEndpoint:
         assert any(d["field"] == "email" for d in data["details"])
         assert any(d["field"] == "age" for d in data["details"])
 
-    def test_not_found_error_example(self):
+    def test_not_found_error_example(self) -> None:
         """Test triggering a not found error example."""
         response = client.get("/api/v1/examples/error-examples/not_found")
         assert response.status_code == 404
@@ -251,7 +251,7 @@ class TestErrorExamplesEndpoint:
         if "debug_info" in data and "context" in data["debug_info"]:
             assert data["debug_info"]["context"].get("searched_in") == "examples_db"
 
-    def test_conflict_error_example(self):
+    def test_conflict_error_example(self) -> None:
         """Test triggering a conflict error example."""
         response = client.get("/api/v1/examples/error-examples/conflict")
         assert response.status_code == 409
@@ -263,7 +263,7 @@ class TestErrorExamplesEndpoint:
         if "debug_info" in data and "context" in data["debug_info"]:
             assert data["debug_info"]["context"].get("existing_id") == "test-123"
 
-    def test_bad_request_error_example(self):
+    def test_bad_request_error_example(self) -> None:
         """Test triggering a bad request error example."""
         response = client.get("/api/v1/examples/error-examples/bad_request")
         assert response.status_code == 400
@@ -277,7 +277,7 @@ class TestErrorExamplesEndpoint:
                 data["details"][0]["message"] == "Missing required header: X-Request-ID"
             )
 
-    def test_internal_error_example(self):
+    def test_internal_error_example(self) -> None:
         """Test triggering an internal server error example."""
         response = client.get("/api/v1/examples/error-examples/internal")
         assert response.status_code == 500
@@ -291,7 +291,7 @@ class TestErrorExamplesEndpoint:
             assert data["error"] == "InternalServerError"
             assert data["message"] == "An unexpected error occurred"
 
-    def test_invalid_error_type(self):
+    def test_invalid_error_type(self) -> None:
         """Test invalid error type parameter."""
         # The path parameter has a regex constraint
         response = client.get("/api/v1/examples/error-examples/unknown")
@@ -301,22 +301,22 @@ class TestErrorExamplesEndpoint:
 class TestDivideEndpoint:
     """Test suite for divide endpoint that can raise unexpected errors."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Clear the items database before each test."""
         items_db.clear()
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clear the items database after each test."""
         items_db.clear()
 
-    def test_divide_success(self):
+    def test_divide_success(self) -> None:
         """Test successful division."""
         response = client.get("/api/v1/examples/divide/10/2")
         assert response.status_code == 200
         data = response.json()
         assert data["result"] == 5.0
 
-    def test_divide_by_zero(self):
+    def test_divide_by_zero(self) -> None:
         """Test division by zero handling."""
         response = client.get("/api/v1/examples/divide/10/0")
         assert response.status_code == 500
@@ -329,7 +329,7 @@ class TestDivideEndpoint:
             # In production mode, generic error
             assert data["error"] == "InternalServerError"
 
-    def test_divide_invalid_parameters(self):
+    def test_divide_invalid_parameters(self) -> None:
         """Test division with invalid parameters."""
         # Non-numeric parameters
         response = client.get("/api/v1/examples/divide/abc/def")

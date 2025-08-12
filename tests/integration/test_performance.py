@@ -12,11 +12,11 @@ class TestPerformanceBenchmarks:
     """Performance benchmarks for service registry operations."""
 
     @pytest.mark.asyncio
-    async def test_registration_throughput(self, test_client: AsyncClient):
+    async def test_registration_throughput(self, test_client: AsyncClient) -> None:
         """Benchmark service registration throughput."""
         num_services = 100
 
-        async def register_service(i: int):
+        async def register_service(i: int) -> float | None:
             data = {
                 "name": f"perf-test-{i}",
                 "type": "api",
@@ -58,7 +58,7 @@ class TestPerformanceBenchmarks:
         # Performance assertions removed - run tests to establish baseline
 
     @pytest.mark.asyncio
-    async def test_query_performance(self, test_client: AsyncClient):
+    async def test_query_performance(self, test_client: AsyncClient) -> None:
         """Benchmark service query performance."""
         # First, register services
         services_to_register = 500
@@ -79,7 +79,7 @@ class TestPerformanceBenchmarks:
             await test_client.post("/api/v1/services/register", json=data)
 
         # Benchmark different query types
-        queries = [
+        queries: list[tuple[str, str, dict[str, str]]] = [
             ("List all", "/api/v1/services/", {}),
             ("Filter by type", "/api/v1/services/", {"type": "api"}),
             ("Filter by tag", "/api/v1/services/", {"tag": "env=prod"}),
@@ -109,12 +109,12 @@ class TestPerformanceBenchmarks:
                 # Run tests to establish query performance baseline
 
     @pytest.mark.asyncio
-    async def test_concurrent_load(self, test_client: AsyncClient):
+    async def test_concurrent_load(self, test_client: AsyncClient) -> None:
         """Test system under concurrent load."""
         concurrent_clients = 50
         operations_per_client = 20
 
-        async def client_workload(client_id: int):
+        async def client_workload(client_id: int) -> tuple[int, int]:
             """Simulate a client performing various operations."""
             successes = 0
             errors = 0
@@ -187,19 +187,19 @@ class TestPerformanceBenchmarks:
         # Run tests to establish load performance baseline
 
     @pytest.mark.asyncio
-    async def test_database_connection_pooling(self, test_client: AsyncClient):
+    async def test_database_connection_pooling(self, test_client: AsyncClient) -> None:
         """Test that connection pooling works efficiently."""
         # Perform many quick operations to test connection reuse
         num_operations = 200
 
-        async def quick_operation(i: int):
+        async def quick_operation(i: int) -> float | None:
             start = time.time()
             response = await test_client.get("/api/v1/services/")
             end = time.time()
             return end - start if response.status_code == 200 else None
 
         # Sequential operations (should reuse connections)
-        sequential_times = []
+        sequential_times: list[float] = []
         for i in range(num_operations):
             duration = await quick_operation(i)
             if duration:
@@ -207,8 +207,8 @@ class TestPerformanceBenchmarks:
 
         # Concurrent operations (should use connection pool)
         tasks = [quick_operation(i) for i in range(num_operations)]
-        concurrent_times = await asyncio.gather(*tasks)
-        concurrent_times = [t for t in concurrent_times if t is not None]
+        concurrent_times_raw = await asyncio.gather(*tasks)
+        concurrent_times = [t for t in concurrent_times_raw if t is not None]
 
         print("\nConnection Pooling Performance:")
         print(f"  Sequential avg: {mean(sequential_times) * 1000:.2f}ms")

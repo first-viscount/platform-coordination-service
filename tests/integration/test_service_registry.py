@@ -5,6 +5,7 @@ from uuid import UUID
 
 import pytest
 from httpx import AsyncClient
+from typing import Any
 
 
 class TestServiceRegistration:
@@ -12,8 +13,8 @@ class TestServiceRegistration:
 
     @pytest.mark.asyncio
     async def test_register_new_service(
-        self, test_client: AsyncClient, sample_service_data
-    ):
+        self, test_client: AsyncClient, sample_service_data: dict[str, Any]
+    ) -> None:
         """Test registering a new service."""
         response = await test_client.post(
             "/api/v1/services/register", json=sample_service_data
@@ -33,8 +34,8 @@ class TestServiceRegistration:
 
     @pytest.mark.asyncio
     async def test_register_duplicate_service(
-        self, test_client: AsyncClient, sample_service_data
-    ):
+        self, test_client: AsyncClient, sample_service_data: dict[str, Any]
+    ) -> None:
         """Test that re-registering the same service updates it."""
         # Register first time
         response1 = await test_client.post(
@@ -64,10 +65,10 @@ class TestConcurrentOperations:
     """Test thread safety with concurrent operations."""
 
     @pytest.mark.asyncio
-    async def test_concurrent_registrations(self, test_client: AsyncClient):
+    async def test_concurrent_registrations(self, test_client: AsyncClient) -> None:
         """Test multiple services registering concurrently."""
 
-        async def register_service(name: str, port: int):
+        async def register_service(name: str, port: int) -> Any:
             data = {
                 "name": f"concurrent-{name}",
                 "type": "api",
@@ -99,8 +100,8 @@ class TestConcurrentOperations:
 
     @pytest.mark.asyncio
     async def test_concurrent_updates_same_service(
-        self, test_client: AsyncClient, sample_service_data
-    ):
+        self, test_client: AsyncClient, sample_service_data: dict[str, Any]
+    ) -> None:
         """Test concurrent updates to the same service."""
         # Register initial service
         response = await test_client.post(
@@ -109,7 +110,7 @@ class TestConcurrentOperations:
         service = response.json()
         service_id = service["id"]
 
-        async def update_health(healthy: bool):
+        async def update_health(healthy: bool) -> Any:
             response = await test_client.post(
                 f"/api/v1/services/{service_id}/health", params={"healthy": healthy}
             )
@@ -121,9 +122,9 @@ class TestConcurrentOperations:
 
         # All updates should succeed (no exceptions)
         assert all(not isinstance(r, Exception) for r in responses)
-        assert all(
-            r.status_code == 200 for r in responses if not isinstance(r, Exception)
-        )
+        from httpx import Response
+        successful_responses = [r for r in responses if isinstance(r, Response)]
+        assert all(r.status_code == 200 for r in successful_responses)
 
 
 class TestOptimisticLocking:
@@ -131,8 +132,8 @@ class TestOptimisticLocking:
 
     @pytest.mark.asyncio
     async def test_version_increment_on_update(
-        self, test_client: AsyncClient, db_session, sample_service_data
-    ):
+        self, test_client: AsyncClient, db_session: Any, sample_service_data: dict[str, Any]
+    ) -> None:
         """Test that version increments on each update."""
         from src.repositories.service import ServiceRepository
 
@@ -146,6 +147,7 @@ class TestOptimisticLocking:
         # Get initial version directly from DB
         repo = ServiceRepository(db_session)
         service = await repo.get(service_id)
+        assert service is not None
         initial_version = service.version
 
         # Update service health
@@ -172,8 +174,8 @@ class TestServiceDiscovery:
 
     @pytest.mark.asyncio
     async def test_list_all_services(
-        self, test_client: AsyncClient, multiple_services_data
-    ):
+        self, test_client: AsyncClient, multiple_services_data: list[dict[str, Any]]
+    ) -> None:
         """Test listing all registered services."""
         # Register multiple services
         for service_data in multiple_services_data:
@@ -193,8 +195,8 @@ class TestServiceDiscovery:
 
     @pytest.mark.asyncio
     async def test_filter_by_type(
-        self, test_client: AsyncClient, multiple_services_data
-    ):
+        self, test_client: AsyncClient, multiple_services_data: list[dict[str, Any]]
+    ) -> None:
         """Test filtering services by type."""
         # Register services
         for service_data in multiple_services_data:
@@ -209,8 +211,8 @@ class TestServiceDiscovery:
 
     @pytest.mark.asyncio
     async def test_filter_by_tag(
-        self, test_client: AsyncClient, multiple_services_data
-    ):
+        self, test_client: AsyncClient, multiple_services_data: list[dict[str, Any]]
+    ) -> None:
         """Test filtering services by tag."""
         # Register services
         for service_data in multiple_services_data:
@@ -227,8 +229,8 @@ class TestServiceDiscovery:
 
     @pytest.mark.asyncio
     async def test_discover_by_name(
-        self, test_client: AsyncClient, sample_service_data
-    ):
+        self, test_client: AsyncClient, sample_service_data: dict[str, Any]
+    ) -> None:
         """Test discovering services by name."""
         # Register service
         await test_client.post("/api/v1/services/register", json=sample_service_data)
@@ -251,7 +253,7 @@ class TestServiceDiscovery:
         assert discovered[0]["status"] == "healthy"
 
     @pytest.mark.asyncio
-    async def test_discover_excludes_unhealthy(self, test_client: AsyncClient):
+    async def test_discover_excludes_unhealthy(self, test_client: AsyncClient) -> None:
         """Test that discovery excludes unhealthy services by default."""
         # Register two instances of same service
         service_data = {
@@ -301,8 +303,8 @@ class TestHealthChecks:
 
     @pytest.mark.asyncio
     async def test_health_check_updates_status(
-        self, test_client: AsyncClient, sample_service_data
-    ):
+        self, test_client: AsyncClient, sample_service_data: dict[str, Any]
+    ) -> None:
         """Test that health checks update service status."""
         # Register service
         response = await test_client.post(
@@ -355,7 +357,7 @@ class TestServiceDeletion:
     """Test service unregistration."""
 
     @pytest.mark.asyncio
-    async def test_delete_service(self, test_client: AsyncClient, sample_service_data):
+    async def test_delete_service(self, test_client: AsyncClient, sample_service_data: dict[str, Any]) -> None:
         """Test deleting a service."""
         # Register service
         response = await test_client.post(
@@ -373,7 +375,7 @@ class TestServiceDeletion:
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_delete_nonexistent_service(self, test_client: AsyncClient):
+    async def test_delete_nonexistent_service(self, test_client: AsyncClient) -> None:
         """Test deleting a service that doesn't exist."""
         fake_id = "550e8400-e29b-41d4-a716-446655440000"
         response = await test_client.delete(f"/api/v1/services/{fake_id}")
@@ -385,8 +387,8 @@ class TestAuditTrail:
 
     @pytest.mark.asyncio
     async def test_service_events_logged(
-        self, test_client: AsyncClient, db_session, sample_service_data
-    ):
+        self, test_client: AsyncClient, db_session: Any, sample_service_data: dict[str, Any]
+    ) -> None:
         """Test that service events are logged in the audit trail."""
         from sqlalchemy import select
 

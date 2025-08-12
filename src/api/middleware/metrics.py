@@ -34,11 +34,10 @@ class HTTPMetricsMiddleware(BaseHTTPMiddleware):
             status_code = str(response.status_code)
             return response
         except Exception as e:
-            logger.error(
+            logger.exception(
                 "Request processing error",
                 method=method,
                 endpoint=endpoint,
-                error=str(e),
             )
             status_code = "500"
             raise

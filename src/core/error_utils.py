@@ -2,6 +2,13 @@
 
 from typing import Any
 
+# Error message constants to fix TRY003 violations
+NOT_FOUND_MSG = "{resource} with ID '{identifier}' not found"
+DUPLICATE_RESOURCE_MSG = "Resource already exists"
+INVALID_REFERENCE_MSG = "Referenced resource does not exist"
+DATABASE_CONNECTION_MSG = "Database connection error"
+DATABASE_OPERATION_MSG = "Database operation failed"
+
 
 def raise_not_found(
     resource: str, identifier: Any, context: dict[str, Any] | None = None
@@ -16,7 +23,7 @@ def raise_not_found(
     from .exceptions import NotFoundError
 
     raise NotFoundError(
-        f"{resource.capitalize()} with ID '{identifier}' not found",
+        NOT_FOUND_MSG.format(resource=resource.capitalize(), identifier=identifier),
         error_code=f"{resource.upper()}_NOT_FOUND",
         context=context or {},
     )
@@ -80,23 +87,23 @@ def handle_database_error(exc: Exception) -> None:
     error_message = str(exc).lower()
 
     if "duplicate" in error_message or "unique constraint" in error_message:
-        raise ConflictError("Resource already exists", error_code="DUPLICATE_RESOURCE")
+        raise ConflictError(DUPLICATE_RESOURCE_MSG, error_code="DUPLICATE_RESOURCE")
     elif "foreign key" in error_message:
         from .exceptions import ValidationError
 
         raise ValidationError(
-            "Referenced resource does not exist", error_code="INVALID_REFERENCE"
+            INVALID_REFERENCE_MSG, error_code="INVALID_REFERENCE"
         )
     elif "connection" in error_message or "timeout" in error_message:
         from .exceptions import ServiceUnavailableError
 
         raise ServiceUnavailableError(
-            "Database connection error", error_code="DATABASE_UNAVAILABLE"
+            DATABASE_CONNECTION_MSG, error_code="DATABASE_UNAVAILABLE"
         )
     else:
         # Generic database error
         raise InternalServerError(
-            "Database operation failed",
+            DATABASE_OPERATION_MSG,
             error_code="DATABASE_ERROR",
             context={"original_error": type(exc).__name__},
         )

@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await init_db()
             logger.info("Database initialized successfully")
         except Exception as e:
-            logger.error("Failed to initialize database", error=str(e))
+            logger.exception("Failed to initialize database")
             # In production, you might want to fail fast here
 
     # Start background metrics collection
@@ -55,7 +55,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await start_background_metrics()
         logger.info("Background metrics collection started")
     except Exception as e:
-        logger.error("Failed to start background metrics", error=str(e))
+        logger.exception("Failed to start background metrics")
 
     yield
 
@@ -67,7 +67,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await stop_background_metrics()
         logger.info("Background metrics collection stopped")
     except Exception as e:
-        logger.error("Failed to stop background metrics", error=str(e))
+        logger.exception("Failed to stop background metrics")
 
     if settings.database_url:
         await close_db()

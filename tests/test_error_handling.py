@@ -12,7 +12,7 @@ client = TestClient(app)
 class TestErrorHandlingMiddleware:
     """Test suite for error handling middleware."""
 
-    def test_platform_coordination_error_handling(self):
+    def test_platform_coordination_error_handling(self) -> None:
         """Test handling of custom platform errors."""
         # Test through the error examples endpoint
         response = client.get("/api/v1/examples/error-examples/validation")
@@ -31,7 +31,7 @@ class TestErrorHandlingMiddleware:
         assert "status_code" in body
         # Details may or may not be present depending on error
 
-    def test_request_validation_error_handling(self):
+    def test_request_validation_error_handling(self) -> None:
         """Test handling of FastAPI request validation errors."""
         # Send invalid data to trigger validation error
         response = client.post(
@@ -58,7 +58,7 @@ class TestErrorHandlingMiddleware:
             assert "message" in detail
             assert "code" in detail
 
-    def test_http_exception_handling(self):
+    def test_http_exception_handling(self) -> None:
         """Test handling of FastAPI HTTP exceptions."""
         # Access non-existent endpoint to trigger 404
         response = client.get("/api/v1/non-existent-endpoint")
@@ -69,7 +69,7 @@ class TestErrorHandlingMiddleware:
         assert "Resource not found" in body["message"]
         assert body["path"] == "/api/v1/non-existent-endpoint"
 
-    def test_unexpected_error_handling(self):
+    def test_unexpected_error_handling(self) -> None:
         """Test handling of unexpected errors."""
         # The divide by zero endpoint triggers an unexpected error
         response = client.get("/api/v1/examples/divide/10/0")
@@ -82,7 +82,7 @@ class TestErrorHandlingMiddleware:
         assert "timestamp" in body
         assert "path" in body
 
-    def test_error_response_format_consistency(self):
+    def test_error_response_format_consistency(self) -> None:
         """Test that all error responses follow consistent format."""
         test_cases = [
             # (endpoint, method, data, expected_status)
@@ -115,7 +115,7 @@ class TestErrorHandlingMiddleware:
             # Timestamp should be ISO format
             assert "T" in body["timestamp"]  # Basic ISO format check
 
-    def test_error_headers(self):
+    def test_error_headers(self) -> None:
         """Test that error responses include proper headers."""
         response = client.get("/api/v1/examples/items/non-existent")
 
@@ -126,7 +126,7 @@ class TestErrorHandlingMiddleware:
         if response.status_code == 404:
             assert "X-Error-Code" in response.headers
 
-    def test_validation_error_details(self):
+    def test_validation_error_details(self) -> None:
         """Test detailed validation error information."""
         # Create item with multiple validation errors
         response = client.post(
@@ -149,7 +149,7 @@ class TestErrorHandlingMiddleware:
         assert "name" in field_errors or "body.name" in field_errors
         assert "value" in field_errors or "body.value" in field_errors
 
-    def test_error_context_preservation(self):
+    def test_error_context_preservation(self) -> None:
         """Test that error context is preserved through middleware."""
         # Conflict error includes context
         response = client.get("/api/v1/examples/error-examples/conflict")
@@ -160,13 +160,13 @@ class TestErrorHandlingMiddleware:
             assert body["debug_info"]["context"]["existing_id"] == "test-123"
 
     @patch.dict("os.environ", {"ENVIRONMENT": "production"})
-    def test_production_error_masking(self):
+    def test_production_error_masking(self) -> None:
         """Test that internal errors are masked in production."""
         # Note: This test would need proper environment setup
         # In production, internal errors should be generic
         pass  # Skipping as it requires app restart with different settings
 
-    def test_custom_404_handler(self):
+    def test_custom_404_handler(self) -> None:
         """Test custom 404 error handler."""
         response = client.get("/this-endpoint-does-not-exist")
         assert response.status_code == 404
@@ -175,7 +175,7 @@ class TestErrorHandlingMiddleware:
         assert body["error"] == "NotFound"
         assert body["path"] == "/this-endpoint-does-not-exist"
 
-    def test_error_sanitization(self):
+    def test_error_sanitization(self) -> None:
         """Test that sensitive data is sanitized in errors."""
         # Send data with potential sensitive field names
         sensitive_data = {
@@ -197,7 +197,7 @@ class TestErrorHandlingMiddleware:
                 # Good - sensitive data is not exposed
                 pass
 
-    def test_concurrent_error_handling(self):
+    def test_concurrent_error_handling(self) -> None:
         """Test that error handling works correctly under concurrent requests."""
         import concurrent.futures
 

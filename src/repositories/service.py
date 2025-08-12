@@ -56,7 +56,7 @@ class ServiceRepository(BaseRepository[Service]):
                         await self.session.commit()
                 except Exception as e:
                     # Log error but don't fail the service creation
-                    logger.error("Failed to create service event", error=str(e))
+                    logger.exception("Failed to create service event")
 
                 logger.info(
                     "Service registered",
@@ -72,7 +72,7 @@ class ServiceRepository(BaseRepository[Service]):
                 if hasattr(service_type, "value"):
                     service_type = service_type.value
                 metrics.record_service_registration(str(service_type), 0, success=False)
-                logger.error("Service registration failed - duplicate", error=str(e))
+                logger.exception("Service registration failed - duplicate")
                 raise ConflictError(
                     "Service already exists with this name, host, and port"
                 ) from e

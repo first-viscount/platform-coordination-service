@@ -76,13 +76,11 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             duration = time.time() - start_time
 
             # Log error
-            logger.error(
+            logger.exception(
                 "request_failed",
                 method=request.method,
                 path=request.url.path,
                 duration_ms=round(duration * 1000, 2),
-                error=str(e),
-                exc_info=True,
             )
             raise
         finally:

@@ -56,7 +56,7 @@ class BackgroundMetricsUpdater:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error("Error updating background metrics", error=str(e))
+                logger.exception("Error updating background metrics")
                 await asyncio.sleep(self.update_interval)
 
     async def _update_active_services_metrics(self) -> None:
@@ -90,7 +90,7 @@ class BackgroundMetricsUpdater:
                 )
 
         except Exception as e:
-            logger.error("Failed to update active services metrics", error=str(e))
+            logger.exception("Failed to update active services metrics")
 
 
 # Global instance
